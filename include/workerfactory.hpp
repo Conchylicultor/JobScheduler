@@ -1,5 +1,5 @@
-#ifndef JS_CONCH_H
-#define JS_CONCH_H
+#ifndef JS_CONCH_WORKER_FACTORY_H
+#define JS_CONCH_WORKER_FACTORY_H
 
 #include <memory>
 #include <functional>

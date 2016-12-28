@@ -2,6 +2,12 @@
 #define DEMO_UTILS_H
 
 
+#include <iostream>
+
+
+class ArgumentLogger;
+std::ostream& operator<<(std::ostream& os, const ArgumentLogger& obj);
+
 /** Convinience class to log the variadic arguments flow
   * Only used for debugging
   */
@@ -10,39 +16,36 @@ class ArgumentLogger
 public:
     ArgumentLogger()
     {
-        std::cout << "Arg " << this << ": creation " << std::endl;
+        std::cout << *this << ": creation " << std::endl;
     }
     ArgumentLogger(const ArgumentLogger& other)
     {
-        std::cout << "Arg " << this << ": creation by const copy of " << &other << std::endl;
-    }
-    ArgumentLogger(ArgumentLogger& other)
-    {
-        std::cout << "Arg " << this << ": creation by copy of " << &other << std::endl;
+        std::cout << *this << ": creation by const copy of " << &other << std::endl;
     }
     ArgumentLogger(ArgumentLogger&& other)
     {
-        std::cout << "Arg " << this << ": creation by move of" << &other << std::endl;
+        std::cout << *this << ": creation by move of" << &other << std::endl;
     }
     ArgumentLogger& operator= (const ArgumentLogger& other)
     {
-        std::cout << "Arg " << this << ": assignement by " << &other << std::endl;
+        std::cout << *this << ": assignement of " << &other << std::endl;
         return *this;
     }
     ArgumentLogger& operator= (ArgumentLogger&& other)
     {
-        std::cout << "Arg " << this << ": move assignement by " << &other << std::endl;
+        std::cout << *this << ": move assignement of " << &other << std::endl;
         return *this;
     }
     ~ArgumentLogger()
     {
-        std::cout << "Arg " << this << ": destruction" << std::endl;
-    }
-    void print() const
-    {
-        std::cout << "Arg " << this << ": printing" << std::endl;
+        std::cout << *this << ": destruction" << std::endl;
     }
 };
 
+std::ostream& operator<<(std::ostream& os, const ArgumentLogger& obj)
+{
+    os << "Arg " << &obj;
+    return os;
+}
 
 #endif

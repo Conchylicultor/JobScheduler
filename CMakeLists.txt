@@ -13,6 +13,7 @@ include_directories(include/)
 
 set(LIB_SOURCES
     include/workerfactory.hpp
+    include/feeder.hpp
     include/job_scheduler.hpp
 
     src/job_scheduler.cpp

@@ -41,9 +41,11 @@ WorkerFactory<Worker>::WorkerFactory(Args... args) :
     _delayedBuilder()
 {
     // Save the args for later use
-    _delayedBuilder = [&args...] (int workerId) { // -> auto (add mutable ?)
-        return std::unique_ptr<Worker>(new Worker(workerId, args...));
+    auto make_new = [](int workerId, Args... args)  // Add 'mutable' if Args are not const ref ?
+    {
+        return std::unique_ptr<Worker>(new Worker(workerId, std::forward<Args>(args)...));
     };
+    _delayedBuilder = std::bind(make_new, std::placeholders::_1, args...);  // Need to bind the function in order to save the arguments
 }
 
 template <class Worker>

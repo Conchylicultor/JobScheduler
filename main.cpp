@@ -5,6 +5,34 @@
 //#include <job_scheduler.hpp>
 #include <workerfactory.hpp>
 
+#include "utils.hpp"
+
+
+class WorkerTest
+{
+public:
+    WorkerTest() = delete;
+    WorkerTest(int i, const std::string& message, const ArgumentLogger& ag) : worker_id(i), nb_call(0)
+    {
+        std::cout << "Constructing worker " << i << " (message=" << message << ")"<< std::endl;
+        ag.print();
+    }
+
+    std::string operator()(int input)  // Process the data
+    {
+        ++nb_call;
+        return "Worker " + std::to_string(worker_id) + ": process " + std::to_string(input) + "(" + std::to_string(nb_call)+ " call)";
+    }
+
+    void print() const
+    {
+        std::cout << "Worker " << worker_id << " operational" << std::endl;
+    }
+private:
+    int worker_id;
+    int nb_call;
+};
+
 
 void testWorkerFactory()
 {
@@ -12,29 +40,15 @@ void testWorkerFactory()
 
     const int nb_workers = 3;
 
-    class WorkerTest
-    {
-    public:
-        WorkerTest(int i, const std::string& message) : worker_id(i)
-        {
-            std::cout << "Constructing worker " << i << " (message=" << message << ")"<< std::endl;
-        }
-
-        void print()
-        {
-            std::cout << "Worker " << worker_id << " operational" << std::endl;
-        }
-    private:
-        int worker_id;
-    };
-
-    js_conch::WorkerFactory<WorkerTest> factory{"Shared message"};  // The factory arguments will be passed to the constructor of each worker
+    js_conch::WorkerFactory<WorkerTest> factory{"Shared message", ArgumentLogger{}};  // The factory arguments will be passed to the constructor of each worker
     for (int i = 0 ; i < nb_workers ; ++i)
     {
+        std::cout << "Creation of worker " << i << std::endl;
         auto workerTest = factory.buildNew();  // Return a unique_ptr
         workerTest->print();
     }
 }
+
 
 /*void test_sequencial_queue()
 {

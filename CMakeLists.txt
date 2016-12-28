@@ -13,9 +13,9 @@ include_directories(include/)
 
 set(LIB_SOURCES
     include/workerfactory.hpp
-    #include/job_scheduler.hpp
+    include/job_scheduler.hpp
 
-    #src/job_scheduler.cpp
+    src/job_scheduler.cpp
 )
 
 set(JS_LIB_DIR "${CMAKE_SOURCE_DIR}/lib/")
@@ -27,6 +27,8 @@ set_target_properties(js_conch PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${JS_LIB_DIR}
 #### Sample program definition ####
 
 set(MAIN_SOURCES
+    utils.hpp
+
     main.cpp
 )
 

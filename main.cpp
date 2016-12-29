@@ -5,6 +5,7 @@
 //#include <job_scheduler.hpp>
 #include <workerfactory.hpp>
 #include <feeder.hpp>
+#include <queuescheduler.hpp>
 
 #include "utils.hpp"
 
@@ -16,6 +17,10 @@ public:
     WorkerTest(int i, const std::string& message, const ArgumentLogger& ag) : worker_id(i), nb_call(0)
     {
         std::cout << "Constructing worker " << i << " (message=" << message << ", arg=" << ag<< ")"<< std::endl;
+    }
+    WorkerTest(int i, const std::string& message) : worker_id(i), nb_call(0)
+    {
+        std::cout << "Constructing worker " << i << " (message=" << message << ")"<< std::endl;
     }
 
     std::string operator()(int input)  // Process the data
@@ -115,36 +120,40 @@ void testFeederArgs()
 }
 
 
-/*void testSequencialQueue()
+void testSequencialQueue()
 {
     std::cout << "########################## Demo testSequencialQueue ##########################" << std::endl;
-    int in = 0;
 
-    // Create the working queue
-    js_conch::QueueTread queue{};
+    const int in_max = 30; // The number of values to generate
+    int in_counter = 0;
+    const int nb_workers = 3;
+
+    // Create the working queue and intitialize the workers
+    js_conch::QueueScheduler<int, std::string, WorkerTest> queue(
+        std::move(js_conch::Feeder<int>([&in_counter, in_max]() { // Generate the numbers from 0 to in_max
+            if (in_counter < in_max)
+            {
+                return in_counter++;
+            }
+            throw js_conch::ExpiredException();
+        })),
+        std::move(js_conch::WorkerFactory<WorkerTest>{"Shared message"}),  // Will construct workers on the fly, with the init params (TODO: Each worker should also have a unique id)
+        nb_workers
+    );
 
     // Launch the job scheduler
     // The job scheduler will feed each workers until the feeder expire
     // and there is no more work to do
-    queue.schedule(
-        js_conch::Feeder([&in] -> int { // Generate the numbers from 1 to 11
-            if (in > 10)
-            {
-                throw js_conch::Feeder::ExpiredException;
-            }
-            return ++in;
-        }),
-        js_conch::worker_factory<Worker>(init_params1, init_params2),  // Will construct workers on the fly, with the init params (TODO: Each worker should also have a unique id)
-        nb_workers,
-    ); // Launch the job scheduler with a list of workers (Contains the networks,...)
+    // Launch the job scheduler with a list of workers (Contains the networks,...)
+    queue.launch();
 
     // The values are poped from the same order they have been added, as soon
     // they are available (processed by worker)
     while(std::unique_ptr<std::string> out = queue.pop()) // Get the next JobKit
     {
-        std::cout << *out << endl;
+        std::cout << "Popped value: " << *out << std::endl;
     }
-}*/
+}
 
 
 int main(int argc, char** argv)
@@ -157,7 +166,7 @@ int main(int argc, char** argv)
     testWorkerFactory();
     testFeeder();
     testFeederArgs(); // Same that testFeeder, but ensure that Copy elision is used (TODO: Should merge both int and ArgsLog classes and declare copy cst private)
-    //testSequencialQueue();
+    testSequencialQueue();
 
     std::cout << "The end" << std::endl;
     return 0;

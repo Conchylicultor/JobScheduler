@@ -18,7 +18,7 @@ class Feeder
 {
 public:
     Feeder(std::function<Input()> generator);
-    Feeder(const Feeder&) = delete;
+    Feeder(const Feeder&) = default;
     Feeder& operator= (const Feeder&) = delete;
     ~Feeder() = default;
 

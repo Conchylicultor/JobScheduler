@@ -14,7 +14,8 @@ include_directories(include/)
 set(LIB_SOURCES
     include/workerfactory.hpp
     include/feeder.hpp
-    include/job_scheduler.hpp
+    include/queuescheduler.hpp
+    include/job_scheduler.hpp  # TODO: Delete
 
     src/job_scheduler.cpp
 )

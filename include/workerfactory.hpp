@@ -18,8 +18,8 @@ public:
       * arguments. In addition, the worker id will be given as first parameter
       */
     template <typename... Args>
-    WorkerFactory(Args... args);  // TODO: Investigate if Args&&... and cie would be more efficient
-    WorkerFactory(const WorkerFactory&) = delete;
+    WorkerFactory(Args... args);  // TODO: Investigate if Args&&... and cie would be more efficient (using perfect forwarding)
+    WorkerFactory(const WorkerFactory&) = default;
     WorkerFactory& operator=(const WorkerFactory&) = delete;
     ~WorkerFactory() = default;
 

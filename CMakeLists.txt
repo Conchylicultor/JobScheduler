@@ -15,7 +15,7 @@ set(LIB_SOURCES
     include/workerfactory.hpp
     include/feeder.hpp
     include/queuethread.hpp
-    #include/queuescheduler.hpp
+    include/queuescheduler.hpp
     include/job_scheduler.hpp  # TODO: Delete
 
     src/job_scheduler.cpp

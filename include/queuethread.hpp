@@ -27,6 +27,7 @@ public:
     ~QueueThread() = default;
 
     void push_back(const T& elem);
+    void push_back(T&& elem);
 
     T pop_front();
 
@@ -56,12 +57,23 @@ void QueueThread<T>::push_back(const T& elem)
 
 
 template <typename T>
+void QueueThread<T>::push_back(T&& elem)
+{
+    std::lock_guard<std::mutex> guard(_mutexQueue);  // Push and pop are executed sequencially
+
+    _queue.push_back(std::move(elem));
+
+    _cvEmpty.notify_one();  // Eventually unlock pop_front
+}
+
+
+template <typename T>
 T QueueThread<T>::pop_front()
 {
     std::unique_lock<std::mutex> guard(_mutexQueue);
     _cvEmpty.wait(guard, [this]{ return this->_queue.size() > 0; });  // Wait for the queue to be filled
 
-    T elem = _queue.front();  // If we are here, we are sure that at least one element has been pushed
+    T elem = std::move(_queue.front());  // If we are here, we are sure that at least one element has been pushed (TODO: Is the move call safe ?)
     _queue.pop_front();
 
     return elem;

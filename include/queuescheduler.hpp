@@ -56,18 +56,15 @@ private:
       */
     std::unique_ptr<Output> workerJob(std::unique_ptr<Worker> worker, const Input& input);
 
-    // Protect any queue access and modifications
-    std::mutex _mutexOutputQueue;
-    std::mutex _mutexWorkerQueue;
-    std::mutex _mutexWorkerQueueEmpty;  // Lock the calls when one of the queue is empty
-    std::mutex _mutexOutputQueueEmpty;
-
-    std::list<std::unique_ptr<Worker>> _availableWorkers;
-    std::list<std::future<std::unique_ptr<Output>>> _outputQueue;
+    // Thread safe collections
+    QueueThread<std::unique_ptr<Worker>> _availableWorkers;
+    QueueThread<std::future<std::unique_ptr<Output>>> _outputQueue;
 
     // Input and output connectors
     Feeder<Input> _feeder;
     WorkerFactory<Worker> _factory;
+
+    std::future<void> _schedulerFutur;  // Is linked to the schedulerFutur (is necessary to avoid blocking async)
 };
 
 
@@ -77,12 +74,11 @@ QueueScheduler<Input, Output, Worker>::QueueScheduler(
         const WorkerFactory<Worker>& factory,
         int nbWorker
     ) :
-    _mutexOutputQueue(),
-    _mutexWorkerQueue(),
+    _availableWorkers{},
+    _outputQueue{},
     _feeder(feeder),
     _factory(factory),
-    _availableWorkers{},
-    _outputQueue{}
+    _schedulerFutur{}
 {
     for (int i = 0 ; i < nbWorker ; ++i)
     {
@@ -95,15 +91,15 @@ template <typename Input, typename Output, class Worker>
 void QueueScheduler<Input, Output, Worker>::launch()
 {
     // Will launch the scheduler
-    std::async(  // TODO: To avoid blocking call, need to capture the future in a member variable (future has blocking destructor)
+    _schedulerFutur = std::async(  // TODO: To avoid blocking call, need to capture the future in a member variable (future has blocking destructor)
         std::launch::async,
-        [this]{this->scheldulerJob();}  // Could be replaced by &QueueScheduler::scheldulerJob, this
+        [this]{this->schedulerJob();}  // Could be replaced by &QueueScheduler::schedulerJob, this
     );
 }
 
 
 template <typename Input, typename Output, class Worker>
-void QueueScheduler<Input, Output, Worker>::scheldulerJob()
+void QueueScheduler<Input, Output, Worker>::schedulerJob()
 {
     try
     {
@@ -112,31 +108,32 @@ void QueueScheduler<Input, Output, Worker>::scheldulerJob()
             // Fetch next input
             Input input = _feeder.getNext();  // Get the next input (eventually exit)
 
-            // In case of exit, even if there has been some threads which, all previous futures have
-            // already been pushed to the Queue
+            // In case of exit, even if there has been some threads which did not
+            // finished yet, all previous futures have already been pushed to the
+            // Queue, so the main program will grab all the frames
 
             // Wait for an available worker
-            // Use semaphore
-            // Pop left (TODO: protected call)
+            std::unique_ptr<Worker> worker = _availableWorkers.pop_front();
 
-            // Launch the task (encapsulate the worker )
+            // Launch the task (encapsulate the worker)
             std::future<std::unique_ptr<Output>> returnedValue = std::async(
                 std::launch::async,
-                [input&]{
+                [&worker, &input, this] {
                     // Launch the task
-                    // output = worker(input)
-                    // output = (*(_availableWorkers.back()))(input);
+                    std::unique_ptr<Output> output = (*worker)(input);
 
-                    // Link the ouput with the output wrapper
-                    // Release the output wrapper
-                    // Push the worker back on the stack, (TODO: Protected call)
-                    // Release the semaphore
+                    // The worker finished its job, so can be used again
+                    this->_availableWorkers.push_back(std::move(worker));
+
+                    // Release the future
+                    return output;
                 }
             );
 
             // Push the returnedValue into the output queue
-            // the order is concerved
-            // (will be used to reference the output while keeping the order)
+            // the order is concerved (will be used to reference the output
+            // while keeping track of the  order)
+            _outputQueue.push_back(std::move(returnedValue));
         }
     }
     catch (const ExpiredException& e)
@@ -148,27 +145,22 @@ void QueueScheduler<Input, Output, Worker>::scheldulerJob()
 
 
 template <typename Input, typename Output, class Worker>
-std::unique_ptr<Output> QueueScheduler<Input, Output, Worker>::workerJob(std::unique_ptr<Worker> worker, const Input& input)
-{
-
-}
-
-
-template <typename Input, typename Output, class Worker>
 void QueueScheduler<Input, Output, Worker>::push_release()
 {
-    std::lock_guard<std::mutex> guard(_mutexOutputQueue);  // Lock the output Queue while modification
+    // TODO: Make sure this function is called only once ?
+    std::promise<std::unique_ptr<Output>> promise;
+    std::future<std::unique_ptr<Output>> finalToken = promise.get_future();
+    promise.set_value(std::unique_ptr<Output>(nullptr));
+
+    _outputQueue.push_back(std::move(finalToken));
 }
 
 
 template <typename Input, typename Output, class Worker>
 std::unique_ptr<Output> QueueScheduler<Input, Output, Worker>::pop()
 {
-    // Wait that queue not empty
-    // std::lock_guard<std::mutex> guard(_mutexOutputQueue); // Lock the queue
-    // TODO: Make sure this function is called only one ?
-    // Push a future on the queue
-    _outputQueue.push_back(std::unique_ptr<Output>(nullptr));
+    std::future<std::unique_ptr<Output>> output = _outputQueue.pop_front();
+    return output.get();  // Will wait for the worker to finish
 }
 
 

@@ -8,7 +8,7 @@
 //#include <job_scheduler.hpp>
 #include <workerfactory.hpp>
 #include <feeder.hpp>
-//#include <queuescheduler.hpp>
+#include <queuescheduler.hpp>
 #include <queuethread.hpp>
 
 #include "utils.hpp"
@@ -173,7 +173,7 @@ void testQueueThread()
 }
 
 
-/*void testSequencialQueue()
+void testSequencialQueue()
 {
     std::cout << "########################## Demo testSequencialQueue ##########################" << std::endl;
 
@@ -183,14 +183,14 @@ void testQueueThread()
 
     // Create the working queue and intitialize the workers
     job_scheduler::QueueScheduler<int, std::string, WorkerTest> queue(
-        std::move(job_scheduler::Feeder<int>([&in_counter, in_max]() { // Generate the numbers from 0 to in_max
+        job_scheduler::Feeder<int>([&in_counter, in_max]() { // Generate the numbers from 0 to in_max
             if (in_counter < in_max)
             {
                 return in_counter++;
             }
             throw job_scheduler::ExpiredException();
-        })),
-        std::move(job_scheduler::WorkerFactory<WorkerTest>{"Shared message"}),  // Will construct workers on the fly, with the init params (TODO: Each worker should also have a unique id)
+        }),
+        job_scheduler::WorkerFactory<WorkerTest>{"Shared message"},  // Will construct workers on the fly, with the init params (TODO: Each worker should also have a unique id)
         nb_workers
     );
 
@@ -206,7 +206,7 @@ void testQueueThread()
     {
         std::cout << "Popped value: " << *out << std::endl;
     }
-}*/
+}
 
 
 int main(int argc, char** argv)
@@ -219,8 +219,8 @@ int main(int argc, char** argv)
     testWorkerFactory();
     testFeeder();
     testFeederArgs(); // Same that testFeeder, but ensure that Copy elision is used (TODO: Should merge both int and ArgsLog classes and declare copy cst private)
-    testQueueThread();
-    //testSequencialQueue();
+    //testQueueThread();
+    testSequencialQueue();
 
     std::cout << "The end" << std::endl;
     return 0;

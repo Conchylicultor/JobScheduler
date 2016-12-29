@@ -91,13 +91,13 @@ std::unique_ptr<Output> QueueScheduler<Input, Output, Worker>::pop()
 {
     try
     {
-
+        Input input = _feeder.getNext();  // Get the next input
+        return (*(_availableWorkers.back()))(input);
     }
-    catch (...)
+    catch (const ExpiredException& e)
     {
-
+        return std::unique_ptr<Output>(nullptr);
     }
-    return std::unique_ptr<Output>(nullptr);
 }
 
 

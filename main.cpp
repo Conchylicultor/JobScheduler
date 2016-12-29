@@ -23,10 +23,14 @@ public:
         std::cout << "Constructing worker " << i << " (message=" << message << ")"<< std::endl;
     }
 
-    std::string operator()(int input)  // Process the data
+    std::unique_ptr<std::string> operator()(int input)  // Process the data
     {
         ++nb_call;
-        return "Worker " + std::to_string(worker_id) + ": process " + std::to_string(input) + "(" + std::to_string(nb_call)+ " call)";
+        return std::unique_ptr<std::string>(
+            new std::string(
+                "Worker " + std::to_string(worker_id) + ": input=" + std::to_string(input) + " (" + std::to_string(nb_call)+ " call)"
+            )
+        );
     }
 
     void print() const

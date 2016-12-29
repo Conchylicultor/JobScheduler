@@ -13,4 +13,4 @@ cmake ..
 make
 ```
 
-Then, to use the library, just include `js_conch.hpp` (present in the `include/` folder) and link the generated `lib/js_conch.so`. After compilation, the examples present in the `build/` folder can be launched with `./a.out`.
+Then, to use the library, just include `job_scheduler.hpp` (present in the `include/` folder) and link the generated `lib/job_scheduler.so`. After compilation, the examples present in the `build/` folder can be launched with `./a.out`.

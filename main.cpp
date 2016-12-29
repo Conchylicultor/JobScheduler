@@ -1,11 +1,15 @@
 #include <iostream>
 #include <string>
+#include <vector>
+#include <thread>
+#include <future>
 
-// TODO: Should encapsulate includes into include/js_conch/... (and have a include/js_conch.hpp)
+// TODO: Should encapsulate includes into include/job_scheduler/... (and have a include/job_scheduler.hpp)
 //#include <job_scheduler.hpp>
 #include <workerfactory.hpp>
 #include <feeder.hpp>
-#include <queuescheduler.hpp>
+//#include <queuescheduler.hpp>
+#include <queuethread.hpp>
 
 #include "utils.hpp"
 
@@ -49,7 +53,7 @@ void testWorkerFactory()
 
     const int nb_workers = 3;
 
-    js_conch::WorkerFactory<WorkerTest> factory{"Shared message", ArgumentLogger{}};  // The factory arguments will be passed to the constructor of each worker
+    job_scheduler::WorkerFactory<WorkerTest> factory{"Shared message", ArgumentLogger{}};  // The factory arguments will be passed to the constructor of each worker
     for (int i = 0 ; i < nb_workers ; ++i)
     {
         std::cout << "Creation of worker " << i << std::endl;
@@ -66,12 +70,12 @@ void testFeeder()
     const int in_max = 10; // The number of values to generate
     int in_counter = 0;
 
-    js_conch::Feeder<int> feeder([&in_counter, in_max]() -> int { // Generate the numbers from 0 to in_max
+    job_scheduler::Feeder<int> feeder([&in_counter, in_max]() -> int { // Generate the numbers from 0 to in_max
         if (in_counter < in_max)
         {
             return in_counter++;
         }
-        throw js_conch::ExpiredException();
+        throw job_scheduler::ExpiredException();
     });
 
     bool finished = false;
@@ -82,7 +86,7 @@ void testFeeder()
             int val = feeder.getNext();
             std::cout << "Next value generated: " << val << std::endl;
         }
-        catch (const js_conch::ExpiredException& e)
+        catch (const job_scheduler::ExpiredException& e)
         {
             std::cout << "Generator expired" << std::endl;
             finished = true;
@@ -98,13 +102,13 @@ void testFeederArgs()
     const int in_max = 3; // The number of values to generate
     int in_counter = 0;
 
-    js_conch::Feeder<ArgumentLogger> feeder([&in_counter, in_max]() { // Generate the numbers from 0 to in_max
+    job_scheduler::Feeder<ArgumentLogger> feeder([&in_counter, in_max]() { // Generate the numbers from 0 to in_max
         if (in_counter < in_max)
         {
             ++in_counter;
             return ArgumentLogger{};
         }
-        throw js_conch::ExpiredException();
+        throw job_scheduler::ExpiredException();
     });
 
     bool finished = false;
@@ -115,7 +119,7 @@ void testFeederArgs()
             ArgumentLogger val = feeder.getNext();
             std::cout << "Next value generated: " << val << std::endl;
         }
-        catch (const js_conch::ExpiredException& e)
+        catch (const job_scheduler::ExpiredException& e)
         {
             std::cout << "Generator expired" << std::endl;
             finished = true;
@@ -124,7 +128,52 @@ void testFeederArgs()
 }
 
 
-void testSequencialQueue()
+void testQueueThread()
+{
+    std::cout << "########################## Demo testQueueThread ##########################" << std::endl;
+
+    const int ending_value = -1;
+    int nb_thread = 10;
+
+    job_scheduler::QueueThread<int> queue{};
+
+    std::cout << "Main: Launching threads..." << std::endl;
+    std::vector<std::thread> list_threads;
+    for (int i = 0 ; i < nb_thread ; ++i)
+    {
+        list_threads.emplace_back([&queue, i]() {
+            std::this_thread::sleep_for(std::chrono::seconds(1));
+            //std::cout << std::this_thread::get_id() << ": Pushing " << i << std::endl;
+            queue.push_back(i);
+            std::this_thread::sleep_for(std::chrono::seconds(1));
+        });
+    }
+
+    std::cout << "Main: All threads launched..." << std::endl;
+
+    auto f = std::async(
+        std::launch::async,
+        [&list_threads, &queue, ending_value]{
+            std::cout << std::this_thread::get_id() << ": Joining threads..." << std::endl;
+            for(auto& t : list_threads)
+            {
+                t.join();
+            }
+            std::cout << std::this_thread::get_id() << ": Threads joined, pushing exit token" << std::endl;
+            queue.push_back(ending_value);
+        }
+    );
+
+    int val;
+    std::cout << "Main: Waiting for pop..." << std::endl;
+    while ((val = queue.pop_front()) != ending_value)
+    {
+        std::cout << "Main: Popping value: " << val << std::endl;
+    }
+}
+
+
+/*void testSequencialQueue()
 {
     std::cout << "########################## Demo testSequencialQueue ##########################" << std::endl;
 
@@ -133,15 +182,15 @@ void testSequencialQueue()
     const int nb_workers = 3;
 
     // Create the working queue and intitialize the workers
-    js_conch::QueueScheduler<int, std::string, WorkerTest> queue(
-        std::move(js_conch::Feeder<int>([&in_counter, in_max]() { // Generate the numbers from 0 to in_max
+    job_scheduler::QueueScheduler<int, std::string, WorkerTest> queue(
+        std::move(job_scheduler::Feeder<int>([&in_counter, in_max]() { // Generate the numbers from 0 to in_max
             if (in_counter < in_max)
             {
                 return in_counter++;
             }
-            throw js_conch::ExpiredException();
+            throw job_scheduler::ExpiredException();
         })),
-        std::move(js_conch::WorkerFactory<WorkerTest>{"Shared message"}),  // Will construct workers on the fly, with the init params (TODO: Each worker should also have a unique id)
+        std::move(job_scheduler::WorkerFactory<WorkerTest>{"Shared message"}),  // Will construct workers on the fly, with the init params (TODO: Each worker should also have a unique id)
         nb_workers
     );
 
@@ -157,7 +206,7 @@ void testSequencialQueue()
     {
         std::cout << "Popped value: " << *out << std::endl;
     }
-}
+}*/
 
 
 int main(int argc, char** argv)
@@ -170,7 +219,8 @@ int main(int argc, char** argv)
     testWorkerFactory();
     testFeeder();
     testFeederArgs(); // Same that testFeeder, but ensure that Copy elision is used (TODO: Should merge both int and ArgsLog classes and declare copy cst private)
-    testSequencialQueue();
+    testQueueThread();
+    //testSequencialQueue();
 
     std::cout << "The end" << std::endl;
     return 0;

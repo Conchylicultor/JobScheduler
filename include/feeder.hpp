@@ -1,12 +1,12 @@
-#ifndef JS_CONCH_FEEDER_H
-#define JS_CONCH_FEEDER_H
+#ifndef JS_FEEDER_H
+#define JS_FEEDER_H
 
 //#include <memory>
 //#include <functional>
 #include <exception>
 
 
-namespace js_conch
+namespace job_scheduler
 {
 
 /** The feeder sequencially generate the next output
@@ -14,7 +14,7 @@ namespace js_conch
   * must throw an ExpiredException
   */
 template <typename Input>
-class Feeder
+class Feeder  // TODO: Should be replaced by a simple callable std::function
 {
 public:
     Feeder(std::function<Input()> generator);

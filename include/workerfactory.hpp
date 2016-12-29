@@ -1,11 +1,11 @@
-#ifndef JS_CONCH_WORKER_FACTORY_H
-#define JS_CONCH_WORKER_FACTORY_H
+#ifndef JS_WORKER_FACTORY_H
+#define JS_WORKER_FACTORY_H
 
 #include <memory>
 #include <functional>
 
 
-namespace js_conch
+namespace job_scheduler
 {
 
 /** Wrapper arround the workers creation

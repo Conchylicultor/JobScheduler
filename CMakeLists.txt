@@ -14,17 +14,18 @@ include_directories(include/)
 set(LIB_SOURCES
     include/workerfactory.hpp
     include/feeder.hpp
-    include/queuescheduler.hpp
+    include/queuethread.hpp
+    #include/queuescheduler.hpp
     include/job_scheduler.hpp  # TODO: Delete
 
     src/job_scheduler.cpp
 )
 
 set(JS_LIB_DIR "${CMAKE_SOURCE_DIR}/lib/")
-message(STATUS "Generating js_conch library in: ${JS_LIB_DIR}")
+message(STATUS "Generating job_scheduler library in: ${JS_LIB_DIR}")
 
-add_library(js_conch SHARED ${LIB_SOURCES})
-set_target_properties(js_conch PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${JS_LIB_DIR})
+add_library(job_scheduler SHARED ${LIB_SOURCES})
+set_target_properties(job_scheduler PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${JS_LIB_DIR})
 
 #### Sample program definition ####
 
@@ -37,5 +38,5 @@ set(MAIN_SOURCES
 link_directories(${JS_LIB_DIR})
 
 add_executable (a.out ${MAIN_SOURCES})
-add_dependencies(a.out js_conch)
-target_link_libraries (a.out -ljs_conch)
+add_dependencies(a.out job_scheduler)
+target_link_libraries (a.out -ljob_scheduler)

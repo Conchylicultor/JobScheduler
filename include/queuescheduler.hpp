@@ -6,7 +6,6 @@
 #include <mutex>
 #include <future>
 
-#include "feeder.hpp"
 #include "workerfactory.hpp"
 #include "queuethread.hpp"
 
@@ -23,7 +22,7 @@ class QueueScheduler
 {
 public:
     QueueScheduler(
-        const Feeder<Input>& feeder,
+        const std::function<Input()>& feeder,
         const WorkerFactory<Worker>& factory,
         int nbWorker = 1
     );
@@ -61,16 +60,23 @@ private:
     QueueThread<std::future<std::unique_ptr<Output>>> _outputQueue;
 
     // Input and output connectors
-    Feeder<Input> _feeder;
+    std::function<Input()> _feeder;
     WorkerFactory<Worker> _factory;
 
     std::future<void> _schedulerFutur;  // Is linked to the schedulerFutur (is necessary to avoid blocking async)
 };
 
 
+// TODO: Try to encapsulate tht class inside Feeder without having to declare
+// the template Feeder<void>::ExpiredException
+class ExpiredException : public std::exception
+{
+};
+
+
 template <typename Input, typename Output, class Worker>
 QueueScheduler<Input, Output, Worker>::QueueScheduler(
-        const Feeder<Input>& feeder,
+        const std::function<Input()>& feeder,
         const WorkerFactory<Worker>& factory,
         int nbWorker
     ) :
@@ -106,7 +112,7 @@ void QueueScheduler<Input, Output, Worker>::schedulerJob()
         while(true)  // Exit when the feeder expire (TODO: Could also add a timeout or other exit conditions)
         {
             // Fetch next input
-            Input input = _feeder.getNext();  // Get the next input (eventually exit)
+            Input input = _feeder();  // Get the next input (eventually exit)
 
             // In case of exit, even if there has been some threads which did not
             // finished yet, all previous futures have already been pushed to the

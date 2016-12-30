@@ -6,10 +6,7 @@
 
 // TODO: Should encapsulate includes into include/job_scheduler/... (and have a include/job_scheduler.hpp)
 //#include <job_scheduler.hpp>
-#include <workerfactory.hpp>
-#include <feeder.hpp>
-#include <queuescheduler.hpp>
-#include <queuethread.hpp>
+#include <job_scheduler.hpp>
 
 #include "utils.hpp"
 
@@ -73,7 +70,7 @@ void testFeeder()
     const int in_max = 10; // The number of values to generate
     int in_counter = 0;
 
-    job_scheduler::Feeder<int> feeder([&in_counter, in_max]() -> int { // Generate the numbers from 0 to in_max
+    std::function<int()> feeder([&in_counter, in_max]() -> int { // Generate the numbers from 0 to in_max
         if (in_counter < in_max)
         {
             return in_counter++;
@@ -86,7 +83,7 @@ void testFeeder()
     {
         try
         {
-            int val = feeder.getNext();
+            int val = feeder();
             std::cout << "Next value generated: " << val << std::endl;
         }
         catch (const job_scheduler::ExpiredException& e)
@@ -105,7 +102,7 @@ void testFeederArgs()
     const int in_max = 3; // The number of values to generate
     int in_counter = 0;
 
-    job_scheduler::Feeder<ArgumentLogger> feeder([&in_counter, in_max]() { // Generate the numbers from 0 to in_max
+    std::function<ArgumentLogger()> feeder([&in_counter, in_max]() { // Generate the numbers from 0 to in_max
         if (in_counter < in_max)
         {
             ++in_counter;
@@ -119,7 +116,7 @@ void testFeederArgs()
     {
         try
         {
-            ArgumentLogger val = feeder.getNext();
+            ArgumentLogger val = feeder();
             std::cout << "Next value generated: " << val << std::endl;
         }
         catch (const job_scheduler::ExpiredException& e)
@@ -186,7 +183,7 @@ void testSequencialQueue()
 
     // Create the working queue and intitialize the workers
     job_scheduler::QueueScheduler<int, std::string, WorkerTest> queue(
-        job_scheduler::Feeder<int>([&in_counter, in_max]() { // Generate the numbers from 0 to in_max
+        std::function<int()>([&in_counter, in_max]() { // Generate the numbers from 0 to in_max
             if (in_counter < in_max)
             {
                 return in_counter++;

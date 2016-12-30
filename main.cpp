@@ -47,6 +47,27 @@ std::ostream& operator<<(std::ostream& os, const WorkerTest& obj)
 }
 
 
+class FeederTest
+{
+public:
+    FeederTest(int max_value) : _counter(0), _max_value(max_value)
+    {}
+
+    int operator() ()
+    {
+        if (_counter < _max_value)
+        {
+            return _counter++;
+        }
+        throw job_scheduler::ExpiredException();  // Important: Generator expired
+    }
+
+private:
+    int _counter;
+    int _max_value;
+};
+
+
 void testWorkerFactory()
 {
     std::cout << "########################## Demo testWorkerFactory ##########################" << std::endl;
@@ -68,15 +89,8 @@ void testFeeder()
     std::cout << "########################## Demo testFeeder ##########################" << std::endl;
 
     const int in_max = 10; // The number of values to generate
-    int in_counter = 0;
 
-    std::function<int()> feeder([&in_counter, in_max]() -> int { // Generate the numbers from 0 to in_max
-        if (in_counter < in_max)
-        {
-            return in_counter++;
-        }
-        throw job_scheduler::ExpiredException();
-    });
+    FeederTest feeder(in_max);
 
     bool finished = false;
     while (!finished)
@@ -178,18 +192,11 @@ void testSequencialQueue()
     std::cout << "########################## Demo testSequencialQueue ##########################" << std::endl;
 
     const int in_max = 30; // The number of values to generate
-    int in_counter = 0;
     const int nb_workers = 3;
 
     // Create the working queue and intitialize the workers
     job_scheduler::QueueScheduler<int, std::string, WorkerTest> queue(
-        std::function<int()>([&in_counter, in_max]() { // Generate the numbers from 0 to in_max
-            if (in_counter < in_max)
-            {
-                return in_counter++;
-            }
-            throw job_scheduler::ExpiredException();
-        }),
+        FeederTest(in_max),
         job_scheduler::WorkerFactory<WorkerTest>{"Shared message"},  // Will construct workers on the fly, with the init params (TODO: Each worker should also have a unique id)
         nb_workers
     );

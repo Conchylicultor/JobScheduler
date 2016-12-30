@@ -118,7 +118,7 @@ void QueueScheduler<Input, Output, Worker>::schedulerJob()
             // Launch the task (encapsulate the worker)
             std::future<std::unique_ptr<Output>> returnedValue = std::async(
                 std::launch::async,
-                [&worker, &input, this] {
+                [worker = std::move(worker), input, this] () mutable {  // TODO: Replace by this->workerJob(worker, input) ?
                     // Launch the task
                     std::unique_ptr<Output> output = (*worker)(input);
 

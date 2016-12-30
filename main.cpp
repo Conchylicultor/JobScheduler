@@ -36,15 +36,18 @@ public:
             )
         );
     }
-
-    void print() const
-    {
-        std::cout << "Worker " << worker_id << " operational" << std::endl;
-    }
 private:
     int worker_id;
     int nb_call;
+
+    friend std::ostream& operator<<(std::ostream& os, const WorkerTest& obj);
 };
+
+std::ostream& operator<<(std::ostream& os, const WorkerTest& obj)
+{
+    os << "Worker " << obj.worker_id;
+    return os;
+}
 
 
 void testWorkerFactory()
@@ -58,7 +61,7 @@ void testWorkerFactory()
     {
         std::cout << "Creation of worker " << i << std::endl;
         auto workerTest = factory.buildNew();  // Return a unique_ptr
-        workerTest->print();
+        std::cout << *workerTest << " operational" << std::endl;
     }
 }
 

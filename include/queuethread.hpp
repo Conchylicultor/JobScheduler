@@ -45,6 +45,7 @@ QueueThread<T>::QueueThread() :
 {
 }
 
+
 template <typename T>
 void QueueThread<T>::push_back(const T& elem)
 {

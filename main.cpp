@@ -5,67 +5,9 @@
 #include <future>
 
 // TODO: Should encapsulate includes into include/job_scheduler/... (and have a include/job_scheduler.hpp)
-//#include <job_scheduler.hpp>
 #include <job_scheduler.hpp>
 
-#include "utils.hpp"
-
-
-class WorkerTest
-{
-public:
-    WorkerTest() = delete;
-    WorkerTest(int i, const std::string& message, const ArgumentLogger& ag) : worker_id(i), nb_call(0)
-    {
-        std::cout << "Constructing worker " << i << " (message=" << message << ", arg=" << ag<< ")"<< std::endl;
-    }
-    WorkerTest(int i, const std::string& message) : worker_id(i), nb_call(0)
-    {
-        std::cout << "Constructing worker " << i << " (message=" << message << ")"<< std::endl;
-    }
-
-    std::unique_ptr<std::string> operator()(int input)  // Process the data
-    {
-        ++nb_call;
-        return std::unique_ptr<std::string>(
-            new std::string(
-                "Worker " + std::to_string(worker_id) + ": input=" + std::to_string(input) + " (" + std::to_string(nb_call)+ " call)"
-            )
-        );
-    }
-private:
-    int worker_id;
-    int nb_call;
-
-    friend std::ostream& operator<<(std::ostream& os, const WorkerTest& obj);
-};
-
-std::ostream& operator<<(std::ostream& os, const WorkerTest& obj)
-{
-    os << "Worker " << obj.worker_id;
-    return os;
-}
-
-
-class FeederTest
-{
-public:
-    FeederTest(int max_value) : _counter(0), _max_value(max_value)
-    {}
-
-    int operator() ()
-    {
-        if (_counter < _max_value)
-        {
-            return _counter++;
-        }
-        throw job_scheduler::ExpiredException();  // Important: Generator expired
-    }
-
-private:
-    int _counter;
-    int _max_value;
-};
+#include "main_utils.hpp"
 
 
 void testWorkerFactory()

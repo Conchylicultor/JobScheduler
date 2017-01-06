@@ -13,4 +13,29 @@ cmake ..
 make
 ```
 
-To use the library, just include the headers (present in the `include/` folder). No `.cpp` files as this library is template based. After compilation, the examples present in the `build/` folder can be launched with `./a.out`.
+To use the library, just include the headers (present in the `include/` folder). No `.cpp` files requires as this library is template based. After compilation, the examples present in the `build/` folder can be launched with `./a.out`. Here is a sample code of how to use the library:
+
+```cpp
+const int nb_workers = 2;
+
+// Create the job queue (of the form <Input, Output, Worker>) and intitialize the workers
+job_scheduler::QueueScheduler<cv::Mat, int, PersonCounter> queue(
+    VideoFeeder("vid.mp4"),  // Read the video frame by frame, raise a feeder ExpiredException when finished
+    job_scheduler::WorkerFactory<PersonCounter>{},  // WorkerFactory is a wrapper around the workers creation which gives each worker a unique id
+    nb_workers // Here nb_workers == nb_gpu
+);
+
+// Launch the job scheduler on a separate thread
+// The job scheduler will feed each workers until the feeder expire
+// and there is no more work to do
+queue.launch();
+
+// The values are popped from the same order they have been added, as soon
+// they are available (processed by worker)
+int frame_id = 0;
+while(std::unique_ptr<int> out = queue.pop()) // Get the next processed output
+{
+    std::cout << "Frame " << frame_id << " contains " << *out << " persons." << std::endl;
+    ++frame_id;
+}
+```

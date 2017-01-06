@@ -9,6 +9,8 @@ namespace job_scheduler
 {
 
 /** Wrapper arround the workers creation
+  * The WorkerFactory just forward the given arguments when creating the workers.
+  * In addition, the worker id is given as first parameter.
   */
 template <class Worker>
 class WorkerFactory

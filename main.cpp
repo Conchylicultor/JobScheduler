@@ -10,6 +10,10 @@
 #include "main_utils.hpp"
 
 
+/** Test the worker factory to generate new workers on the fly and demonstrate that
+  * the arguments of the factory are correctly forwarded to the workers.
+  * Use ArgumentLogger to track the copies/moves.
+  */
 void testWorkerFactory()
 {
     std::cout << "########################## Demo testWorkerFactory ##########################" << std::endl;
@@ -26,6 +30,9 @@ void testWorkerFactory()
 }
 
 
+/** Simple feeder demonstration which will generate numbers from 1 to 10
+  * before expiring
+  */
 void testFeeder()
 {
     std::cout << "########################## Demo testFeeder ##########################" << std::endl;
@@ -51,6 +58,9 @@ void testFeeder()
 }
 
 
+/** Same as testFeeder, but by using ArgumentLogger, we can ensure that inputs
+  * are correctly copied and moved.
+  */
 void testFeederArgs()
 {
     std::cout << "########################## Demo testFeeder args ##########################" << std::endl;
@@ -84,6 +94,10 @@ void testFeederArgs()
 }
 
 
+/** This test demonstrate the QueueThread class. Just a simple Queue thread safe
+  * The values are popped in the order they are added. Here all thread try to
+  * push on the queue at the same time so the input order in non deterministic.
+  */
 void testQueueThread()
 {
     std::cout << "########################## Demo testQueueThread ##########################" << std::endl;
@@ -98,10 +112,10 @@ void testQueueThread()
     for (int i = 0 ; i < nb_thread ; ++i)
     {
         list_threads.emplace_back([&queue, i]() {
-            std::this_thread::sleep_for(std::chrono::seconds(1));
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
             //std::cout << std::this_thread::get_id() << ": Pushing " << i << std::endl;
             queue.push_back(i);
-            std::this_thread::sleep_for(std::chrono::seconds(1));
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
         });
     }
 
@@ -129,6 +143,8 @@ void testQueueThread()
 }
 
 
+/** Final example which demonstrate how to use all previous classes together
+  */
 void testSequencialQueue()
 {
     std::cout << "########################## Demo testSequencialQueue ##########################" << std::endl;
@@ -136,22 +152,22 @@ void testSequencialQueue()
     const int in_max = 30; // The number of values to generate
     const int nb_workers = 3;
 
-    // Create the working queue and intitialize the workers
+    // Create the job queue and intitialize the workers
+    // Will construct workers on the fly, with the init params (Each worker also have a unique id)
     job_scheduler::QueueScheduler<int, std::string, WorkerTest> queue(
         FeederTest(in_max),
-        job_scheduler::WorkerFactory<WorkerTest>{"Shared message"},  // Will construct workers on the fly, with the init params (TODO: Each worker should also have a unique id)
+        job_scheduler::WorkerFactory<WorkerTest>{"Shared message"},
         nb_workers
     );
 
-    // Launch the job scheduler
+    // Launch the job scheduler on a separate thread
     // The job scheduler will feed each workers until the feeder expire
     // and there is no more work to do
-    // Launch the job scheduler with a list of workers (Contains the networks,...)
     queue.launch();
 
-    // The values are poped from the same order they have been added, as soon
+    // The values are popped from the same order they have been added, as soon
     // they are available (processed by worker)
-    while(std::unique_ptr<std::string> out = queue.pop()) // Get the next JobKit
+    while(std::unique_ptr<std::string> out = queue.pop()) // Get the next processed output
     {
         std::cout << "Popped value: " << *out << std::endl;
     }
@@ -168,7 +184,7 @@ int main(int argc, char** argv)
     testWorkerFactory();
     testFeeder();
     testFeederArgs(); // Same that testFeeder, but ensure that Copy elision is used (TODO: Should merge both int and ArgsLog classes and declare copy cst private)
-    //testQueueThread();
+    testQueueThread();
     testSequencialQueue();
 
     std::cout << "The end" << std::endl;

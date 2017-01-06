@@ -129,7 +129,7 @@ void testQueueThread()
             {
                 t.join();
             }
-            std::cout << std::this_thread::get_id() << ": Threads joined, pushing exit token" << std::endl;
+            std::cout << std::this_thread::get_id() << ": Threads joined, pushing exit token..." << std::endl;
             queue.push_back(ending_value);
         }
     );
@@ -140,6 +140,7 @@ void testQueueThread()
     {
         std::cout << "Main: Popping value: " << val << std::endl;
     }
+    std::cout << "Main: exit token received, loop ended" << std::endl;
 }
 
 

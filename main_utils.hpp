@@ -10,6 +10,8 @@ std::ostream& operator<<(std::ostream& os, const ArgumentLogger& obj);
 
 /** Convinience class to log the variadic arguments flow
   * Only used for debugging
+  * TODO: Use a static hashmap to map adresses into human readable
+  * name (instead of priniting *this) or simpler add a member std::string name
   */
 class ArgumentLogger
 {

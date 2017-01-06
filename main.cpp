@@ -24,7 +24,7 @@ void testWorkerFactory()
     for (int i = 0 ; i < nb_workers ; ++i)
     {
         std::cout << "Creation of worker " << i << std::endl;
-        auto workerTest = factory.buildNew();  // Return a unique_ptr
+        auto workerTest = factory.buildNew(i);  // Return a unique_ptr
         std::cout << *workerTest << " operational" << std::endl;
     }
 }
@@ -152,10 +152,12 @@ void testSequencialQueue()
     const int in_max = 30; // The number of values to generate
     const int nb_workers = 3;
 
-    // Create the job queue and intitialize the workers
-    // Will construct workers on the fly, with the init params (Each worker also have a unique id)
-    job_scheduler::QueueScheduler<int, std::string, WorkerTest> queue(
-        job_scheduler::WorkerFactory<WorkerTest>{},
+    // Create the job queue
+    job_scheduler::QueueScheduler<int, std::string, WorkerTest> queue{};
+
+    // Will construct workers on the fly, using the shared params (Each worker also have a unique id)
+    queue.add_workers(
+        {"Shared message"}, // job_scheduler::WorkerFactory<WorkerTest>{}
         nb_workers
     );
 
@@ -183,10 +185,9 @@ void testSequencialQueueReuse()
 
     // Create the job queue and intitialize the workers
     // Will construct workers on the fly, with the init params (Each worker also have a unique id)
-    job_scheduler::QueueScheduler<int, std::string, WorkerTest> queue(
-        job_scheduler::WorkerFactory<WorkerTest>{},
-        nb_workers
-    );
+    job_scheduler::QueueScheduler<int, std::string, WorkerTest> queue{};
+
+    queue.add_workers({}, nb_workers);
 
     std::function<void(int)> launchFeeder([&queue](int feederSize) {
         std::cout << "Launching generator of " << feederSize << " values" << std::endl;

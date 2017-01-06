@@ -27,9 +27,8 @@ public:
 
     /** Wrapper arround the workers creation
       */
-    std::unique_ptr<Worker> buildNew();
+    std::unique_ptr<Worker> buildNew(int workerId) const;
 private:
-    int _nbWorker; // Keep count of the workers
     std::function<std::unique_ptr<Worker>(int)> _delayedBuilder;  // Used as proxy to pack the variadic arguments
 };
 
@@ -39,7 +38,6 @@ private:
 template <class Worker>
 template <typename... Args>
 WorkerFactory<Worker>::WorkerFactory(Args... args) :
-    _nbWorker(0),
     _delayedBuilder()
 {
     // Save the args for later use
@@ -51,10 +49,9 @@ WorkerFactory<Worker>::WorkerFactory(Args... args) :
 }
 
 template <class Worker>
-std::unique_ptr<Worker> WorkerFactory<Worker>::buildNew()
+std::unique_ptr<Worker> WorkerFactory<Worker>::buildNew(int workerId) const
 {
-    auto newWorker = _delayedBuilder(_nbWorker);
-    ++_nbWorker;
+    auto newWorker = _delayedBuilder(workerId);
     return std::move(newWorker);
 }
 

@@ -21,13 +21,19 @@ template <typename Input, typename Output, class Worker>  // TODO: Could the num
 class QueueScheduler
 {
 public:
-    QueueScheduler(
-        const WorkerFactory<Worker>& factory,
-        int nbWorker = 1
-    );
+    QueueScheduler() = default;
     QueueScheduler(const QueueScheduler&) = delete;
     QueueScheduler& operator=(const QueueScheduler&) = delete;
     ~QueueScheduler() = default;
+
+    /** Construct some workers using the given factory
+      * TODO: What to do with the worker ids ? Reset each time ?
+      * or increment continuously ?
+      */
+    void add_workers(
+        const WorkerFactory<Worker>& factory = {},
+        int nbWorker = 1
+    );
 
     /** Start launching the workers, with the given feeder
       * Warning: if two feeders are launched at the same time,
@@ -50,18 +56,15 @@ private:
     /** Launch the workers and feed them
       * Run asynchronusly
       */
-    void schedulerJob(const std::function<Input()>& feeder);
+    void scheduler_job(const std::function<Input()>& feeder);
 
     /** Manage the job of a particular worker.
       */
-    std::unique_ptr<Output> workerJob(std::unique_ptr<Worker> worker, const Input& input);
+    std::unique_ptr<Output> worker_job(std::unique_ptr<Worker> worker, const Input& input);
 
     // Thread safe collections
     QueueThread<std::unique_ptr<Worker>> _availableWorkers;
     QueueThread<std::future<std::unique_ptr<Output>>> _outputQueue;
-
-    // Worker factories
-    WorkerFactory<Worker> _factory;
 
     std::future<void> _schedulerFutur;  // Is linked to the schedulerFutur (is necessary to avoid blocking async)
 };
@@ -75,18 +78,14 @@ class ExpiredException : public std::exception
 
 
 template <typename Input, typename Output, class Worker>
-QueueScheduler<Input, Output, Worker>::QueueScheduler(
-        const WorkerFactory<Worker>& factory,
-        int nbWorker
-    ) :
-    _availableWorkers{},
-    _outputQueue{},
-    _factory(factory),
-    _schedulerFutur{}
+void QueueScheduler<Input, Output, Worker>::add_workers(
+    const WorkerFactory<Worker>& factory,
+    int nbWorker
+)
 {
     for (int i = 0 ; i < nbWorker ; ++i)
     {
-        _availableWorkers.push_back(_factory.buildNew());
+        _availableWorkers.push_back(factory.buildNew(i));
     }
 }
 
@@ -97,13 +96,13 @@ void QueueScheduler<Input, Output, Worker>::launch(const std::function<Input()>&
     // Will launch the scheduler
     _schedulerFutur = std::async(  // To avoid blocking call, need to capture the future in a member variable (future has blocking destructor)
         std::launch::async,
-        [this, feeder]{this->schedulerJob(feeder);}  // Should be replaced by &QueueScheduler::schedulerJob, this
+        [this, feeder]{this->scheduler_job(feeder);}  // Should be replaced by &QueueScheduler::scheduler_job, this
     );
 }
 
 
 template <typename Input, typename Output, class Worker>
-void QueueScheduler<Input, Output, Worker>::schedulerJob(const std::function<Input()>& feeder)
+void QueueScheduler<Input, Output, Worker>::scheduler_job(const std::function<Input()>& feeder)
 {
     try
     {
@@ -122,7 +121,7 @@ void QueueScheduler<Input, Output, Worker>::schedulerJob(const std::function<Inp
             // Launch the task (encapsulate the worker)
             std::future<std::unique_ptr<Output>> returnedValue = std::async(
                 std::launch::async,
-                [worker = std::move(worker), input, this] () mutable {  // TODO: Replace by this->workerJob(worker, input) ?
+                [worker = std::move(worker), input, this] () mutable {  // TODO: Replace by this->worker_job(worker, input) ?
                     // Launch the task
                     std::unique_ptr<Output> output = (*worker)(input);
 

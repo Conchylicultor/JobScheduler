@@ -60,9 +60,14 @@ public:
     {
         std::cout << "Constructing worker " << i << " (message=" << message << ", arg=" << ag<< ")"<< std::endl;
     }
-    WorkerTest(int i, const std::string& message) : worker_id(i), nb_call(0)
+    WorkerTest(int i, const std::string& message = "") : worker_id(i), nb_call(0)
     {
-        std::cout << "Constructing worker " << i << " (message=" << message << ")"<< std::endl;
+        std::cout << "Constructing worker " << i ;
+        if (!message.empty())
+        {
+            std::cout << " (message=" << message << ")";
+        }
+        std::cout << std::endl;
     }
 
     std::unique_ptr<std::string> operator()(int input)  // Process the data

@@ -20,7 +20,6 @@ const int nb_workers = 2;
 
 // Create the job queue (of the form <Input, Output, Worker>) and intitialize the workers
 job_scheduler::QueueScheduler<cv::Mat, int, PersonCounter> queue(
-    VideoFeeder("vid.mp4"),  // Read the video frame by frame, raise a feeder ExpiredException when finished
     job_scheduler::WorkerFactory<PersonCounter>{},  // WorkerFactory is a wrapper around the workers creation which gives each worker a unique id
     nb_workers // Here nb_workers == nb_gpu
 );
@@ -28,7 +27,9 @@ job_scheduler::QueueScheduler<cv::Mat, int, PersonCounter> queue(
 // Launch the job scheduler on a separate thread
 // The job scheduler will feed each workers until the feeder expire
 // and there is no more work to do
-queue.launch();
+queue.launch(
+    VideoFeeder("vid.mp4") // Read the video frame by frame, raise a feeder ExpiredException when finished)
+);
 
 // The values are popped from the same order they have been added, as soon
 // they are available (processed by worker)
@@ -39,3 +40,5 @@ while(std::unique_ptr<int> out = queue.pop()) // Get the next processed output
     ++frame_id;
 }
 ```
+
+Note that the work is not evenly distributed among the workers. If a worker process the jobs more quickly, it will receive more job to process. Also there is no temporisation mechanism so the main thread need to pop the output values faster than they are pushed by the workers, otherwise, the output queue can grow indefinitely (in case of an infinite feeder).

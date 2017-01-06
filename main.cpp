@@ -58,8 +58,8 @@ void testFeeder()
 }
 
 
-/** Same as testFeeder, but by using ArgumentLogger, we can ensure that inputs
-  * are correctly copied and moved.
+/** Same as testFeeder, but by using ArgumentLogger, we can check that
+  * copy elision is used on the inputs.
   */
 void testFeederArgs()
 {
@@ -143,7 +143,7 @@ void testQueueThread()
 }
 
 
-/** Final example which demonstrate how to use all previous classes together
+/** Main example which demonstrate how to use all previous classes together
   */
 void testSequencialQueue()
 {
@@ -155,15 +155,14 @@ void testSequencialQueue()
     // Create the job queue and intitialize the workers
     // Will construct workers on the fly, with the init params (Each worker also have a unique id)
     job_scheduler::QueueScheduler<int, std::string, WorkerTest> queue(
-        FeederTest(in_max),
-        job_scheduler::WorkerFactory<WorkerTest>{"Shared message"},
+        job_scheduler::WorkerFactory<WorkerTest>{},
         nb_workers
     );
 
     // Launch the job scheduler on a separate thread
     // The job scheduler will feed each workers until the feeder expire
     // and there is no more work to do
-    queue.launch();
+    queue.launch(FeederTest(in_max));
 
     // The values are popped from the same order they have been added, as soon
     // they are available (processed by worker)
@@ -171,6 +170,39 @@ void testSequencialQueue()
     {
         std::cout << "Popped value: " << *out << std::endl;
     }
+}
+
+
+/** Example which demonstrate the reusability of the worker with another feeder
+  */
+void testSequencialQueueReuse()
+{
+    std::cout << "########################## Demo testSequencialQueueReuse ##########################" << std::endl;
+
+    const int nb_workers = 3;
+
+    // Create the job queue and intitialize the workers
+    // Will construct workers on the fly, with the init params (Each worker also have a unique id)
+    job_scheduler::QueueScheduler<int, std::string, WorkerTest> queue(
+        job_scheduler::WorkerFactory<WorkerTest>{},
+        nb_workers
+    );
+
+    std::function<void(int)> launchFeeder([&queue](int feederSize) {
+        std::cout << "Launching generator of " << feederSize << " values" << std::endl;
+
+        queue.launch(FeederTest(feederSize));
+
+        while(std::unique_ptr<std::string> out = queue.pop()) // Get the next processed output
+        {
+            std::cout << "Popped value: " << *out << std::endl;
+        }
+    });
+
+    launchFeeder(3);
+    launchFeeder(5);
+    launchFeeder(2);
+
 }
 
 
@@ -186,6 +218,7 @@ int main(int argc, char** argv)
     testFeederArgs(); // Same that testFeeder, but ensure that Copy elision is used (TODO: Should merge both int and ArgsLog classes and declare copy cst private)
     testQueueThread();
     testSequencialQueue();
+    testSequencialQueueReuse();
 
     std::cout << "The end" << std::endl;
     return 0;

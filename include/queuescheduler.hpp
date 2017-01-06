@@ -22,7 +22,6 @@ class QueueScheduler
 {
 public:
     QueueScheduler(
-        const std::function<Input()>& feeder,
         const WorkerFactory<Worker>& factory,
         int nbWorker = 1
     );
@@ -30,9 +29,11 @@ public:
     QueueScheduler& operator=(const QueueScheduler&) = delete;
     ~QueueScheduler() = default;
 
-    /** Start launching the workers
+    /** Start launching the workers, with the given feeder
+      * Warning: if two feeders are launched at the same time,
+      * the behavior is undefined.
       */
-    void launch();
+    void launch(const std::function<Input()>& feeder);
 
     // Queues modifiers
 
@@ -49,7 +50,7 @@ private:
     /** Launch the workers and feed them
       * Run asynchronusly
       */
-    void schedulerJob();
+    void schedulerJob(const std::function<Input()>& feeder);
 
     /** Manage the job of a particular worker.
       */
@@ -59,8 +60,7 @@ private:
     QueueThread<std::unique_ptr<Worker>> _availableWorkers;
     QueueThread<std::future<std::unique_ptr<Output>>> _outputQueue;
 
-    // Input and output connectors
-    std::function<Input()> _feeder;
+    // Worker factories
     WorkerFactory<Worker> _factory;
 
     std::future<void> _schedulerFutur;  // Is linked to the schedulerFutur (is necessary to avoid blocking async)
@@ -76,13 +76,11 @@ class ExpiredException : public std::exception
 
 template <typename Input, typename Output, class Worker>
 QueueScheduler<Input, Output, Worker>::QueueScheduler(
-        const std::function<Input()>& feeder,
         const WorkerFactory<Worker>& factory,
         int nbWorker
     ) :
     _availableWorkers{},
     _outputQueue{},
-    _feeder(feeder),
     _factory(factory),
     _schedulerFutur{}
 {
@@ -94,25 +92,25 @@ QueueScheduler<Input, Output, Worker>::QueueScheduler(
 
 
 template <typename Input, typename Output, class Worker>
-void QueueScheduler<Input, Output, Worker>::launch()
+void QueueScheduler<Input, Output, Worker>::launch(const std::function<Input()>& feeder)
 {
     // Will launch the scheduler
-    _schedulerFutur = std::async(  // TODO: To avoid blocking call, need to capture the future in a member variable (future has blocking destructor)
+    _schedulerFutur = std::async(  // To avoid blocking call, need to capture the future in a member variable (future has blocking destructor)
         std::launch::async,
-        [this]{this->schedulerJob();}  // Could be replaced by &QueueScheduler::schedulerJob, this
+        [this, feeder]{this->schedulerJob(feeder);}  // Should be replaced by &QueueScheduler::schedulerJob, this
     );
 }
 
 
 template <typename Input, typename Output, class Worker>
-void QueueScheduler<Input, Output, Worker>::schedulerJob()
+void QueueScheduler<Input, Output, Worker>::schedulerJob(const std::function<Input()>& feeder)
 {
     try
     {
         while(true)  // Exit when the feeder expire (TODO: Could also add a timeout or other exit conditions)
         {
             // Fetch next input
-            Input input = _feeder();  // Get the next input (eventually exit)
+            Input input = feeder();  // Get the next input (eventually exit)
 
             // In case of exit, even if there has been some threads which did not
             // finished yet, all previous futures have already been pushed to the

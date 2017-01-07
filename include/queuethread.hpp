@@ -31,6 +31,10 @@ public:
 
     T pop_front();
 
+    // WARNING: Not thread safe. Just a convinience method. Be also careful
+    // to not access the returned reference after QueueThread is destructed
+    const std::list<T>& get_data();
+
 private:
     std::mutex _mutexQueue;  // Prevent concurent calls to the queue (access or update)
     std::condition_variable _cvEmpty;  // Lock the calls when one of the queue is empty
@@ -78,6 +82,13 @@ T QueueThread<T>::pop_front()
     _queue.pop_front();
 
     return elem;
+}
+
+
+template <typename T>
+const std::list<T>& QueueThread<T>::get_data()
+{
+    return _queue;
 }
 
 

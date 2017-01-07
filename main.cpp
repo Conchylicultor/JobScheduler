@@ -184,8 +184,6 @@ void testSequencialQueueReuse()
 
     const int nb_workers = 3;
 
-    // Create the job queue and intitialize the workers
-    // Will construct workers on the fly, with the init params (Each worker also have a unique id)
     job_scheduler::QueueScheduler<int, std::string, WorkerTest> queue{};
 
     queue.add_workers({}, nb_workers);
@@ -208,6 +206,24 @@ void testSequencialQueueReuse()
 }
 
 
+/** Show how to access directly the underlying workers of the
+  */
+void testWorkerAccess()
+{
+    std::cout << "########################## Demo testSequencialQueueReuse ##########################" << std::endl;
+
+    const int nb_workers = 5;
+
+    job_scheduler::QueueScheduler<int, std::string, WorkerTest> queue{};
+    queue.add_workers({"Shared message"}, nb_workers);
+
+    for(auto& worker : queue.get_workers())  // Can be const& or &
+    {
+        std::cout << "Worker: " << *worker << std::endl;
+    }
+}
+
+
 int main(int argc, char** argv)
 {
     (void)argc;  // Unused
@@ -221,6 +237,7 @@ int main(int argc, char** argv)
     testQueueThread();
     testSequencialQueue();
     testSequencialQueueReuse();
+    testWorkerAccess();
 
     std::cout << "The end" << std::endl;
     return 0;

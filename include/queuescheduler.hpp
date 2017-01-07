@@ -52,6 +52,15 @@ public:
       */
     void push_release();
 
+    // Utils
+
+    /** Convinience method for communication between main thread and the
+      * workers.
+      * WARNING: Not thread safe. Should be only used before the launch
+      * call while no worker is working
+      */
+    const std::list<std::unique_ptr<Worker>>& get_workers();
+
 private:
     /** Launch the workers and feed them
       * Run asynchronusly
@@ -150,7 +159,8 @@ void QueueScheduler<Input, Output, Worker>::scheduler_job(const std::function<In
 template <typename Input, typename Output, class Worker>
 void QueueScheduler<Input, Output, Worker>::push_release()
 {
-    // TODO: Make sure this function is called only once ?
+    // TODO: Make sure this function is called only once ? <= In that case,
+    // be sure to reinitialize when calling launch again
     std::promise<std::unique_ptr<Output>> promise;
     std::future<std::unique_ptr<Output>> finalToken = promise.get_future();
     promise.set_value(std::unique_ptr<Output>(nullptr));
@@ -164,6 +174,13 @@ std::unique_ptr<Output> QueueScheduler<Input, Output, Worker>::pop()
 {
     std::future<std::unique_ptr<Output>> output = _outputQueue.pop_front();
     return output.get();  // Will wait for the worker to finish
+}
+
+
+template <typename Input, typename Output, class Worker>
+const std::list<std::unique_ptr<Worker>>& QueueScheduler<Input, Output, Worker>::get_workers()
+{
+    return _availableWorkers.get_data();
 }
 
 

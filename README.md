@@ -31,7 +31,7 @@ queue.add_workers(
 // The job scheduler will feed each workers until the feeder expire
 // and there is no more work to do
 queue.launch(
-    VideoFeeder("vid.mp4") // Read the video frame by frame, raise a feeder ExpiredException when finished)
+    VideoFeeder("vid.mp4") // Will read the video frame by frame
 );
 
 // The values are popped from the same order they have been added, as soon

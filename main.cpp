@@ -63,7 +63,7 @@ void testFeeder()
   */
 void testFeederArgs()
 {
-    std::cout << "########################## Demo testFeeder args ##########################" << std::endl;
+    std::cout << "########################## Demo testFeederArgs ##########################" << std::endl;
 
     const int in_max = 3; // The number of values to generate
     int in_counter = 0;
@@ -210,7 +210,7 @@ void testSequencialQueueReuse()
   */
 void testWorkerAccess()
 {
-    std::cout << "########################## Demo testSequencialQueueReuse ##########################" << std::endl;
+    std::cout << "########################## Demo testWorkerAccess ##########################" << std::endl;
 
     const int nb_workers = 5;
 

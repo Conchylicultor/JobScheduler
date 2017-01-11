@@ -6,7 +6,7 @@
 #include <mutex>
 
 // Value for which the queue don't have a maximum size. Need to be zero (otherwise, 0 would be a blocking queue)
-#define JS_UNLIMITED 0
+constexpr size_t JS_UNLIMITED = 0;
 
 
 namespace job_scheduler

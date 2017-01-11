@@ -191,7 +191,7 @@ void testQueueThreadPush()
     int i = 0;
     while (queue.pop_front() != ending_value)
     {
-        std::this_thread::sleep_for(std::chrono::milliseconds(10)); // Leave enough time for a new pushes (but only one will succed) 
+        std::this_thread::sleep_for(std::chrono::milliseconds(10)); // Leave enough time for a new pushes (but only one will succed)
         if(i < nb_thread - static_cast<int>(maxSize))
         {
             PrintThread{} << "Main: One more..." << std::endl; // Only one pop, so only one push

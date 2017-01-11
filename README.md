@@ -23,7 +23,7 @@ job_scheduler::QueueScheduler<cv::Mat, int, PersonCounter> queue{};
 
 // Initialize the workers
 queue.add_workers(
-    {},  // WorkerFactory is a wrapper around the workers creation which gives each worker a unique id
+    {},  // Factory to wrap the worker construction (constructed using PersonCounter{workerId, Args...})
     nb_workers // Here nb_workers == nb_gpu
 );
 

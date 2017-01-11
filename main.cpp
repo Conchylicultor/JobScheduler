@@ -98,9 +98,9 @@ void testFeederArgs()
   * The values are popped in the order they are added. Here all thread try to
   * push on the queue at the same time so the input order in non deterministic.
   */
-void testQueueThread()
+void testQueueThreadPop()
 {
-    std::cout << "########################## Demo testQueueThread ##########################" << std::endl;
+    std::cout << "########################## Demo testQueueThreadPop ##########################" << std::endl;
 
     const int ending_value = -1;
     int nb_thread = 10;
@@ -139,6 +139,64 @@ void testQueueThread()
     while ((val = queue.pop_front()) != ending_value)
     {
         std::cout << "Main: Popping value: " << val << std::endl;
+    }
+    std::cout << "Main: exit token received, loop ended" << std::endl;
+}
+
+
+/** Test of QueueThread to demonstrate the maxSize parameter which make pushing
+  * to the queue blocking
+  */
+void testQueueThreadPush()
+{
+    std::cout << "########################## Demo testQueueThreadPush ##########################" << std::endl;
+
+    const int ending_value = -1;
+    int nb_thread = 7;
+    size_t maxSize = 3;
+
+    job_scheduler::QueueThread<int> queue{maxSize};
+
+    // All threads try to push the value at the same time, Only the fastest
+    // will succed
+    std::cout << "Main: Launching threads..." << std::endl;
+    std::vector<std::thread> list_threads;
+    for (int i = 0 ; i < nb_thread ; ++i)
+    {
+        list_threads.emplace_back([&queue, i]() {
+            std::this_thread::sleep_for(std::chrono::milliseconds(10)); // Used to break the sequencial construction
+            queue.push_back(i);
+            PrintThread{} << i << " pushed..." << std::endl;
+        });
+    }
+
+    PrintThread{} << "Main: Temporizing..." << std::endl;
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+
+    PrintThread{} << "Main: Only " << maxSize << " elements should have been pushed at this time..." << std::endl;
+
+    auto f = std::async(
+        std::launch::async,
+        [&list_threads, &queue, ending_value]{
+            for(auto& t : list_threads)
+            {
+                t.join();
+            }
+            PrintThread{} << "All threads joined, pushing exit token..." << std::endl;
+            queue.push_back(ending_value);
+        }
+    );
+
+    int i = 0;
+    while (queue.pop_front() != ending_value)
+    {
+        std::this_thread::sleep_for(std::chrono::milliseconds(10)); // Leave enough time for a new pushes (but only one will succed) 
+        if(i < nb_thread - static_cast<int>(maxSize))
+        {
+            PrintThread{} << "Main: One more..." << std::endl; // Only one pop, so only one push
+        }
+        ++i;
     }
     std::cout << "Main: exit token received, loop ended" << std::endl;
 }
@@ -234,7 +292,8 @@ int main(int argc, char** argv)
     testWorkerFactory();
     testFeeder();
     testFeederArgs(); // Same that testFeeder, but ensure that Copy elision is used (TODO: Should merge both int and ArgsLog classes and declare copy cst private)
-    testQueueThread();
+    testQueueThreadPop();
+    testQueueThreadPush();
     testSequencialQueue();
     testSequencialQueueReuse();
     testWorkerAccess();

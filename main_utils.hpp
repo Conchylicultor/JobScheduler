@@ -105,11 +105,11 @@ public:
     FeederTest(int max_value) : _counter(0), _max_value(max_value)
     {}
 
-    int operator() ()
+    std::unique_ptr<int> operator() ()
     {
         if (_counter < _max_value)
         {
-            return _counter++;
+            return std::unique_ptr<int>(new int(_counter++));
         }
         throw job_scheduler::ExpiredException();  // Important: Generator expired
     }

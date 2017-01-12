@@ -46,8 +46,8 @@ void testFeeder()
     {
         try
         {
-            int val = feeder();
-            std::cout << "Next value generated: " << val << std::endl;
+            std::unique_ptr<int> val = feeder();
+            std::cout << "Next value generated: " << *val << std::endl;
         }
         catch (const job_scheduler::ExpiredException& e)
         {
@@ -277,7 +277,7 @@ void testWorkerAccess()
 
     for(auto& worker : queue.get_workers())  // Can be const& or &
     {
-        std::cout << "Worker: " << *worker << std::endl;
+        std::cout << "Accessing worker: " << *worker << std::endl;
     }
 }
 

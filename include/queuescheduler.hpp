@@ -13,6 +13,7 @@
 namespace job_scheduler
 {
 
+
 /** QueueScheduler allows to parallelize the work among threads while keeping the
   * output sequencial with respect to the input.
   * The pop call will be blocking while the release token hasn't been pushed.
@@ -20,6 +21,11 @@ namespace job_scheduler
 template <typename Input, typename Output, class Worker>  // TODO: Could the number of templates args could be reduced (redundancy) ?
 class QueueScheduler
 {
+
+using InputPtr = std::unique_ptr<Input>;
+using OutputPtr = std::unique_ptr<Output>;
+using WorkerPtr = std::unique_ptr<Worker>;
+
 public:
     QueueScheduler() = default;
     QueueScheduler(const QueueScheduler&) = delete;
@@ -39,7 +45,7 @@ public:
       * Warning: if two feeders are launched at the same time,
       * the behavior is undefined.
       */
-    void launch(const std::function<Input()>& feeder);
+    void launch(const std::function<InputPtr()>& feeder);
 
     // Queues modifiers
 
@@ -65,7 +71,7 @@ private:
     /** Launch the workers and feed them
       * Run asynchronusly
       */
-    void scheduler_job(const std::function<Input()>& feeder);
+    void scheduler_job(const std::function<InputPtr()>& feeder);
 
     /** Feeder thread which tries to permanatly feed the queue
       * Wait when the queue is full
@@ -74,14 +80,15 @@ private:
 
     /** Worker thread which process a single input and update the future result
       * previously pushed on the queue
-      * The input needs to be passed by value (BAD) becouse it the original object
-      * could be destroyed before worker_job finished (TODO: Use unique_ptr instead)
       */
-    std::unique_ptr<Output> worker_job(std::unique_ptr<Worker> worker, Input input);
+    std::unique_ptr<Output> worker_job(
+        std::unique_ptr<Worker> worker,
+        std::unique_ptr<Input> input
+    );
 
     // Thread safe collections
     QueueThread<std::unique_ptr<Worker>> _availableWorkers;
-    QueueThread<std::future<std::unique_ptr<Input>>> _inputQueue;
+    QueueThread<std::unique_ptr<Input>> _inputQueue;
     QueueThread<std::future<std::unique_ptr<Output>>> _outputQueue;
 
     size_t maxInputSize = JS_UNLIMITED;
@@ -112,7 +119,7 @@ void QueueScheduler<Input, Output, Worker>::add_workers(
 
 
 template <typename Input, typename Output, class Worker>
-void QueueScheduler<Input, Output, Worker>::launch(const std::function<Input()>& feeder)
+void QueueScheduler<Input, Output, Worker>::launch(const std::function<InputPtr()>& feeder)
 {
     // Will launch the scheduler
     _schedulerFutur = std::async(  // To avoid blocking call, need to capture the future in a member variable (future has blocking destructor)
@@ -124,14 +131,14 @@ void QueueScheduler<Input, Output, Worker>::launch(const std::function<Input()>&
 
 
 template <typename Input, typename Output, class Worker>
-void QueueScheduler<Input, Output, Worker>::scheduler_job(const std::function<Input()>& feeder)
+void QueueScheduler<Input, Output, Worker>::scheduler_job(const std::function<InputPtr()>& feeder)
 {
     try
     {
         while(true)  // Exit when the feeder expire (TODO: Could also add a timeout or other exit conditions)
         {
             // Fetch next input
-            Input input = feeder();  // Get the next input (eventually exit)
+            std::unique_ptr<Input> input = feeder();  // Get the next input (eventually exit)
 
             // In case of exit, even if there has been some threads which did not
             // finished yet, all previous futures have already been pushed to the
@@ -142,7 +149,7 @@ void QueueScheduler<Input, Output, Worker>::scheduler_job(const std::function<In
                 std::launch::async,
                 &QueueScheduler::worker_job, this,
                 _availableWorkers.pop_front(),  // Wait for an available worker
-                input
+                std::move(input)
             );
 
             // Push the returnedValue into the output queue
@@ -160,10 +167,13 @@ void QueueScheduler<Input, Output, Worker>::scheduler_job(const std::function<In
 
 
 template <typename Input, typename Output, class Worker>
-std::unique_ptr<Output> QueueScheduler<Input, Output, Worker>::worker_job(std::unique_ptr<Worker> worker, Input input)
+std::unique_ptr<Output> QueueScheduler<Input, Output, Worker>::worker_job(
+    std::unique_ptr<Worker> worker,
+    std::unique_ptr<Input> input
+)
 {
     // Launch the task
-    std::unique_ptr<Output> output = (*worker)(input);
+    std::unique_ptr<Output> output = (*worker)(*input.get());
 
     // The worker finished its job, so can be used again
     _availableWorkers.push_back(std::move(worker));

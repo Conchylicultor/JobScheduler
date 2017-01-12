@@ -67,13 +67,25 @@ private:
       */
     void scheduler_job(const std::function<Input()>& feeder);
 
-    /** Manage the job of a particular worker.
+    /** Feeder thread which tries to permanatly feed the queue
+      * Wait when the queue is full
       */
-    std::unique_ptr<Output> worker_job(std::unique_ptr<Worker> worker, const Input& input);
+    void feeder_job();
+
+    /** Worker thread which process a single input and update the future result
+      * previously pushed on the queue
+      * The input needs to be passed by value (BAD) becouse it the original object
+      * could be destroyed before worker_job finished (TODO: Use unique_ptr instead)
+      */
+    std::unique_ptr<Output> worker_job(std::unique_ptr<Worker> worker, Input input);
 
     // Thread safe collections
     QueueThread<std::unique_ptr<Worker>> _availableWorkers;
+    QueueThread<std::future<std::unique_ptr<Input>>> _inputQueue;
     QueueThread<std::future<std::unique_ptr<Output>>> _outputQueue;
+
+    size_t maxInputSize = JS_UNLIMITED;
+    size_t maxOutputSize = JS_UNLIMITED;
 
     std::future<void> _schedulerFutur;  // Is linked to the schedulerFutur (is necessary to avoid blocking async)
 };
@@ -105,7 +117,8 @@ void QueueScheduler<Input, Output, Worker>::launch(const std::function<Input()>&
     // Will launch the scheduler
     _schedulerFutur = std::async(  // To avoid blocking call, need to capture the future in a member variable (future has blocking destructor)
         std::launch::async,
-        [this, feeder]{this->scheduler_job(feeder);}  // Should be replaced by &QueueScheduler::scheduler_job, this
+        &QueueScheduler::scheduler_job, this, // Will call this->scheduler_job(feeder)
+        feeder
     );
 }
 
@@ -124,22 +137,12 @@ void QueueScheduler<Input, Output, Worker>::scheduler_job(const std::function<In
             // finished yet, all previous futures have already been pushed to the
             // Queue, so the main program will grab all the frames
 
-            // Wait for an available worker
-            std::unique_ptr<Worker> worker = _availableWorkers.pop_front();
-
             // Launch the task (encapsulate the worker)
             std::future<std::unique_ptr<Output>> returnedValue = std::async(
                 std::launch::async,
-                [worker = std::move(worker), input, this] () mutable {  // TODO: Replace by this->worker_job(worker, input) ?
-                    // Launch the task
-                    std::unique_ptr<Output> output = (*worker)(input);
-
-                    // The worker finished its job, so can be used again
-                    this->_availableWorkers.push_back(std::move(worker));
-
-                    // Release the future
-                    return output;
-                }
+                &QueueScheduler::worker_job, this,
+                _availableWorkers.pop_front(),  // Wait for an available worker
+                input
             );
 
             // Push the returnedValue into the output queue
@@ -153,6 +156,20 @@ void QueueScheduler<Input, Output, Worker>::scheduler_job(const std::function<In
         // Release the queue
         push_release();
     }
+}
+
+
+template <typename Input, typename Output, class Worker>
+std::unique_ptr<Output> QueueScheduler<Input, Output, Worker>::worker_job(std::unique_ptr<Worker> worker, Input input)
+{
+    // Launch the task
+    std::unique_ptr<Output> output = (*worker)(input);
+
+    // The worker finished its job, so can be used again
+    _availableWorkers.push_back(std::move(worker));
+
+    // Release the future
+    return output;
 }
 
 

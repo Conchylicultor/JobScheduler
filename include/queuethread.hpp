@@ -5,12 +5,12 @@
 #include <condition_variable>
 #include <mutex>
 
-// Value for which the queue don't have a maximum size. Need to be zero (otherwise, 0 would be a blocking queue)
-constexpr size_t JS_UNLIMITED = 0;
-
 
 namespace job_scheduler
 {
+
+// Value for which the queue don't have a maximum size. Need to be zero (otherwise, 0 would be a blocking queue)
+constexpr size_t JS_UNLIMITED = 0;
 
 
 /** Thread safe queue implementation.

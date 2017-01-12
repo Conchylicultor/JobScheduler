@@ -52,7 +52,7 @@ public:
     /** Block while the list is empty.
       * Return the First-In has soon as it has been released
       */
-    std::unique_ptr<Output> pop();
+    OutputPtr pop();
 
     /** Final token. Make the pop call non blocking
       */
@@ -65,7 +65,7 @@ public:
       * WARNING: Not thread safe. Should be only used before the launch
       * call while no worker is working
       */
-    const std::list<std::unique_ptr<Worker>>& get_workers();
+    const std::list<WorkerPtr>& get_workers();
 
 private:
     /** Launch the workers and feed them
@@ -81,15 +81,12 @@ private:
     /** Worker thread which process a single input and update the future result
       * previously pushed on the queue
       */
-    std::unique_ptr<Output> worker_job(
-        std::unique_ptr<Worker> worker,
-        std::unique_ptr<Input> input
-    );
+    OutputPtr worker_job(WorkerPtr worker, InputPtr input);
 
     // Thread safe collections
-    QueueThread<std::unique_ptr<Worker>> _availableWorkers;
-    QueueThread<std::unique_ptr<Input>> _inputQueue;
-    QueueThread<std::future<std::unique_ptr<Output>>> _outputQueue;
+    QueueThread<WorkerPtr> _availableWorkers;
+    QueueThread<InputPtr> _inputQueue;
+    QueueThread<std::future<OutputPtr>> _outputQueue;
 
     size_t maxInputSize = JS_UNLIMITED;
     size_t maxOutputSize = JS_UNLIMITED;
@@ -98,7 +95,7 @@ private:
 };
 
 
-// TODO: Try to encapsulate tht class inside Feeder without having to declare
+// TODO: Try to encapsulate the class inside Feeder without having to declare
 // the template Feeder<void>::ExpiredException
 class ExpiredException : public std::exception
 {
@@ -138,14 +135,14 @@ void QueueScheduler<Input, Output, Worker>::scheduler_job(const std::function<In
         while(true)  // Exit when the feeder expire (TODO: Could also add a timeout or other exit conditions)
         {
             // Fetch next input
-            std::unique_ptr<Input> input = feeder();  // Get the next input (eventually exit)
+            InputPtr input = feeder();  // Get the next input (eventually exit)
 
             // In case of exit, even if there has been some threads which did not
             // finished yet, all previous futures have already been pushed to the
             // Queue, so the main program will grab all the frames
 
             // Launch the task (encapsulate the worker)
-            std::future<std::unique_ptr<Output>> returnedValue = std::async(
+            std::future<OutputPtr> returnedValue = std::async(
                 std::launch::async,
                 &QueueScheduler::worker_job, this,
                 _availableWorkers.pop_front(),  // Wait for an available worker
@@ -167,13 +164,10 @@ void QueueScheduler<Input, Output, Worker>::scheduler_job(const std::function<In
 
 
 template <typename Input, typename Output, class Worker>
-std::unique_ptr<Output> QueueScheduler<Input, Output, Worker>::worker_job(
-    std::unique_ptr<Worker> worker,
-    std::unique_ptr<Input> input
-)
+auto QueueScheduler<Input, Output, Worker>::worker_job(WorkerPtr worker, InputPtr input) -> OutputPtr
 {
     // Launch the task
-    std::unique_ptr<Output> output = (*worker)(*input.get());
+    OutputPtr output = (*worker)(*input.get());
 
     // The worker finished its job, so can be used again
     _availableWorkers.push_back(std::move(worker));
@@ -188,24 +182,24 @@ void QueueScheduler<Input, Output, Worker>::push_release()
 {
     // TODO: Make sure this function is called only once ? <= In that case,
     // be sure to reinitialize when calling launch again
-    std::promise<std::unique_ptr<Output>> promise;
-    std::future<std::unique_ptr<Output>> finalToken = promise.get_future();
-    promise.set_value(std::unique_ptr<Output>(nullptr));
+    std::promise<OutputPtr> promise;
+    std::future<OutputPtr> finalToken = promise.get_future();
+    promise.set_value(OutputPtr(nullptr));
 
     _outputQueue.push_back(std::move(finalToken));
 }
 
 
 template <typename Input, typename Output, class Worker>
-std::unique_ptr<Output> QueueScheduler<Input, Output, Worker>::pop()
+auto QueueScheduler<Input, Output, Worker>::pop() -> OutputPtr
 {
-    std::future<std::unique_ptr<Output>> output = _outputQueue.pop_front();
+    std::future<OutputPtr> output = _outputQueue.pop_front();
     return output.get();  // Will wait for the worker to finish
 }
 
 
 template <typename Input, typename Output, class Worker>
-const std::list<std::unique_ptr<Worker>>& QueueScheduler<Input, Output, Worker>::get_workers()
+auto QueueScheduler<Input, Output, Worker>::get_workers() -> const std::list<WorkerPtr>&
 {
     return _availableWorkers.get_data();
 }

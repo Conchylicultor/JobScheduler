@@ -10,7 +10,7 @@ namespace job_scheduler
 {
 
 // Value for which the queue don't have a maximum size. Need to be zero (otherwise, 0 would be a blocking queue)
-constexpr size_t JS_UNLIMITED = 0;
+constexpr size_t UNLIMITED = 0;
 
 
 /** Thread safe queue implementation.
@@ -26,7 +26,7 @@ template <typename T>
 class QueueThread
 {
 public:
-    QueueThread(size_t maxSize = JS_UNLIMITED);
+    QueueThread(size_t maxSize = UNLIMITED);
     QueueThread(const QueueThread&) = delete;
     QueueThread& operator=(const QueueThread&) = delete;
     ~QueueThread() = default;
@@ -112,7 +112,7 @@ const std::list<T>& QueueThread<T>::get_data()
 template <typename T>
 bool QueueThread<T>::is_not_full()
 {
-    if (_maxSize == JS_UNLIMITED)
+    if (_maxSize == UNLIMITED)
     {
         return true;  // Queue never full
     }

@@ -2,7 +2,7 @@
 
 A small C++ library to launch concurrent jobs while keeping the input queue order intact.
 
-The original goal for which the library has been developed, was to process each frames of a video independently using multiple GPUs. The number of workers (here one per GPU) was negligible compare to the number of frames, and the number of frame was not known in advance (potentially needed to be used to process video streams). After processing, the processed informations needed to be in the same order than the frames. This library allows to distribute continuously the jobs among the workers, and while parallelizing the work, keeps the processed order intact. Also each frames are prefetched even before a worker becomes available.
+The original goal for which the library has been developed, was to process each frames of a video independently using multiple GPUs. The number of workers (here one per GPU) was negligible compare to the number of frames, and the number of frame was not known in advance (potentially needed to be used to process video streams). After processing, the processed informations needed to be in the same order than the frames. This library allows to distribute continuously the jobs among the workers, and while parallelizing the work, keeps the processed order intact. Also the frames are pre-fetched on an input queue even before a worker becomes available.
 
 To build, as usual:
 
@@ -44,4 +44,4 @@ while(std::unique_ptr<int> out = queue.pop()) // Get the next processed output
 }
 ```
 
-Note that the work is not evenly distributed among the workers. If a worker process the jobs more quickly, it will receive more job to process. Also there is no temporisation mechanism so the main thread need to pop the output values faster than they are pushed by the workers, otherwise, the output queue can grow indefinitely (in case of an infinite feeder).
+Note that the work is not evenly distributed among the workers. If a worker process the jobs more quickly, it will receive more job to process. Also there is no temporisation mechanism by default so the main thread need to pop the output values faster than they are pushed by the workers, otherwise, the output queue can grow indefinitely (in case of an infinite feeder). You can set a maximum output or input size for the queues

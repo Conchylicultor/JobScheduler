@@ -30,7 +30,7 @@ using WorkerPtr = std::unique_ptr<Worker>;
 using Feeder = std::function<InputPtr()>;
 
 public:
-    QueueScheduler() = default;
+    QueueScheduler(size_t maxInputSize = 1, size_t maxOutputSize = UNLIMITED);
     QueueScheduler(const QueueScheduler&) = delete;
     QueueScheduler& operator=(const QueueScheduler&) = delete;
     ~QueueScheduler() = default;
@@ -91,9 +91,6 @@ private:
     QueueThread<InputPtr> _inputQueue;
     QueueThread<std::future<OutputPtr>> _outputQueue;
 
-    size_t maxInputSize = JS_UNLIMITED;
-    size_t maxOutputSize = JS_UNLIMITED;
-
     std::future<void> _schedulerFutur;  // Is linked to the schedulerFutur (is necessary to avoid blocking async)
 };
 
@@ -103,6 +100,14 @@ private:
 class ExpiredException : public std::exception
 {
 };
+
+
+template <typename Input, typename Output, class Worker>
+QueueScheduler<Input, Output, Worker>::QueueScheduler(size_t maxInputSize, size_t maxOutputSize) :
+    _inputQueue(maxInputSize),
+    _outputQueue(maxOutputSize)
+{
+}
 
 
 template <typename Input, typename Output, class Worker>

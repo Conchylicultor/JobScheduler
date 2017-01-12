@@ -236,6 +236,7 @@ void testSequencialQueue()
 
 
 /** Example which demonstrate the reusability of the worker with another feeder
+  * Also test the input/output queue limit size
   */
 void testSequencialQueueReuse()
 {
@@ -243,7 +244,7 @@ void testSequencialQueueReuse()
 
     const int nb_workers = 3;
 
-    job_scheduler::QueueScheduler<int, std::string, WorkerTest> queue{};
+    job_scheduler::QueueScheduler<int, std::string, WorkerTest> queue{1,1};  // Only one element at a time in input/output queue
 
     queue.add_workers({}, nb_workers);
 

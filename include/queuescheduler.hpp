@@ -25,6 +25,7 @@ class QueueScheduler
 using InputPtr = std::unique_ptr<Input>;
 using OutputPtr = std::unique_ptr<Output>;
 using WorkerPtr = std::unique_ptr<Worker>;
+using Feeder = std::function<InputPtr()>;
 
 public:
     QueueScheduler() = default;
@@ -45,7 +46,7 @@ public:
       * Warning: if two feeders are launched at the same time,
       * the behavior is undefined.
       */
-    void launch(const std::function<InputPtr()>& feeder);
+    void launch(const Feeder& feeder);
 
     // Queues modifiers
 
@@ -71,12 +72,12 @@ private:
     /** Launch the workers and feed them
       * Run asynchronusly
       */
-    void scheduler_job(const std::function<InputPtr()>& feeder);
+    void scheduler_job(const Feeder& feeder);
 
     /** Feeder thread which tries to permanatly feed the queue
       * Wait when the queue is full
       */
-    void feeder_job();
+    void feeder_job(const Feeder& feeder);
 
     /** Worker thread which process a single input and update the future result
       * previously pushed on the queue
@@ -116,43 +117,58 @@ void QueueScheduler<Input, Output, Worker>::add_workers(
 
 
 template <typename Input, typename Output, class Worker>
-void QueueScheduler<Input, Output, Worker>::launch(const std::function<InputPtr()>& feeder)
+void QueueScheduler<Input, Output, Worker>::launch(const Feeder& feeder)
 {
     // Will launch the scheduler
     _schedulerFutur = std::async(  // To avoid blocking call, need to capture the future in a member variable (future has blocking destructor)
         std::launch::async,
         &QueueScheduler::scheduler_job, this, // Will call this->scheduler_job(feeder)
-        feeder
+        feeder  // Warning: the argument is copied inside std::async
     );
 }
 
 
 template <typename Input, typename Output, class Worker>
-void QueueScheduler<Input, Output, Worker>::scheduler_job(const std::function<InputPtr()>& feeder)
+void QueueScheduler<Input, Output, Worker>::scheduler_job(const Feeder& feeder)
+{
+    // Launch the feeder on another thread
+    std::future<void> feederFutur = std::async(  // Capture the future to avoid blocking call
+        std::launch::async,
+        &QueueScheduler::feeder_job, this,
+        feeder
+    );
+
+    while(InputPtr input = _inputQueue.pop_front())  // Get the next input (eventually exit when the feeder expire) (TODO: Could also add a timeout or other exit conditions)
+    {
+        // In case of exit, even if there has been some threads which did not
+        // finished yet, all previous futures have already been pushed to the
+        // Queue, so the main program will grab all the frames
+
+        // Launch the task (encapsulate the worker)
+        std::future<OutputPtr> returnedValue = std::async(
+            std::launch::async,
+            &QueueScheduler::worker_job, this,
+            _availableWorkers.pop_front(),  // Wait for an available worker
+            std::move(input)
+        );
+
+        // Push the returnedValue into the output queue
+        // the order is concerved (will be used to reference the output
+        // while keeping track of the  order)
+        _outputQueue.push_back(std::move(returnedValue));
+    }
+
+}
+
+
+template <typename Input, typename Output, class Worker>
+void QueueScheduler<Input, Output, Worker>::feeder_job(const Feeder& feeder)
 {
     try
     {
-        while(true)  // Exit when the feeder expire (TODO: Could also add a timeout or other exit conditions)
+        while(true)
         {
-            // Fetch next input
-            InputPtr input = feeder();  // Get the next input (eventually exit)
-
-            // In case of exit, even if there has been some threads which did not
-            // finished yet, all previous futures have already been pushed to the
-            // Queue, so the main program will grab all the frames
-
-            // Launch the task (encapsulate the worker)
-            std::future<OutputPtr> returnedValue = std::async(
-                std::launch::async,
-                &QueueScheduler::worker_job, this,
-                _availableWorkers.pop_front(),  // Wait for an available worker
-                std::move(input)
-            );
-
-            // Push the returnedValue into the output queue
-            // the order is concerved (will be used to reference the output
-            // while keeping track of the  order)
-            _outputQueue.push_back(std::move(returnedValue));
+            _inputQueue.push_back(feeder());
         }
     }
     catch (const ExpiredException& e)

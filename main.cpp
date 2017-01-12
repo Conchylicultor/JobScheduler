@@ -12,7 +12,7 @@
 
 /** Test the worker factory to generate new workers on the fly and demonstrate that
   * the arguments of the factory are correctly forwarded to the workers.
-  * Use ArgumentLogger to track the copies/moves.
+  * Use ObjLogger to track the copies/moves.
   */
 void testWorkerFactory()
 {
@@ -20,7 +20,7 @@ void testWorkerFactory()
 
     const int nb_workers = 3;
 
-    job_scheduler::WorkerFactory<WorkerTest> factory{"Shared message", ArgumentLogger{}};  // The factory arguments will be passed to the constructor of each worker
+    job_scheduler::WorkerFactory<WorkerTest> factory{"Shared message", ObjLogger{}};  // The factory arguments will be passed to the constructor of each worker
     for (int i = 0 ; i < nb_workers ; ++i)
     {
         std::cout << "Creation of worker " << i << std::endl;
@@ -58,8 +58,9 @@ void testFeeder()
 }
 
 
-/** Same as testFeeder, but by using ArgumentLogger, we can check that
-  * copy elision is used on the inputs.
+/** Same as testFeeder, but by using ObjLogger, we can check that
+  * copy elision is used on the inputs (Not anymore now the feeder return
+  * a unique_ptr). This function is keept just for legacy.
   */
 void testFeederArgs()
 {
@@ -68,11 +69,11 @@ void testFeederArgs()
     const int in_max = 3; // The number of values to generate
     int in_counter = 0;
 
-    std::function<ArgumentLogger()> feeder([&in_counter, in_max]() { // Generate the numbers from 0 to in_max
+    std::function<ObjLogger()> feeder([&in_counter, in_max]() { // Generate the numbers from 0 to in_max
         if (in_counter < in_max)
         {
             ++in_counter;
-            return ArgumentLogger{};
+            return ObjLogger{};
         }
         throw job_scheduler::ExpiredException();
     });
@@ -82,7 +83,7 @@ void testFeederArgs()
     {
         try
         {
-            ArgumentLogger val = feeder();
+            ObjLogger val = feeder();
             std::cout << "Next value generated: " << val << std::endl;
         }
         catch (const job_scheduler::ExpiredException& e)

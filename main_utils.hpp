@@ -6,48 +6,72 @@
 #include <sstream>
 
 
-class ArgumentLogger;
-std::ostream& operator<<(std::ostream& os, const ArgumentLogger& obj);
+class ObjLogger;
+std::ostream& operator<<(std::ostream& os, const ObjLogger& obj);
 
-/** Convinience class to log the variadic arguments flow
-  * Only used for debugging
-  * TODO: Use a static hashmap to map adresses into human readable
-  * name (instead of priniting *this) or simpler add a member std::string name
+/** Convinience class to log an object lifetime flow (move, copy, assignement,...)
+  * for instance, when passed as parameter. Only used for debugging purpose.
   */
-class ArgumentLogger
+class ObjLogger
 {
 public:
-    ArgumentLogger()
-    {
-        std::cout << *this << ": creation " << std::endl;
-    }
-    ArgumentLogger(const ArgumentLogger& other)
-    {
-        std::cout << *this << ": creation by const copy of " << &other << std::endl;
-    }
-    ArgumentLogger(ArgumentLogger&& other)
-    {
-        std::cout << *this << ": creation by move of" << &other << std::endl;
-    }
-    ArgumentLogger& operator= (const ArgumentLogger& other)
-    {
-        std::cout << *this << ": assignement of " << &other << std::endl;
-        return *this;
-    }
-    ArgumentLogger& operator= (ArgumentLogger&& other)
-    {
-        std::cout << *this << ": move assignement of " << &other << std::endl;
-        return *this;
-    }
-    ~ArgumentLogger()
-    {
-        std::cout << *this << ": destruction" << std::endl;
-    }
+    // Constructors
+    ObjLogger();
+    ObjLogger(const ObjLogger& other);
+    ObjLogger(ObjLogger&& other);
+
+    // Assignement
+    ObjLogger& operator= (const ObjLogger& other);
+    ObjLogger& operator= (ObjLogger&& other);
+
+    // Destructor
+    ~ObjLogger();
+
+private:
+    static int counter;
+    int m_id;
+
+    friend std::ostream& operator<< (std::ostream& os, const ObjLogger& obj);
 };
 
-std::ostream& operator<<(std::ostream& os, const ArgumentLogger& obj)
+int ObjLogger::counter = 0;
+
+ObjLogger::ObjLogger() : m_id(counter++)
 {
-    os << "Arg " << &obj;
+    std::cout << *this << ": creation" << std::endl;
+}
+
+ObjLogger::ObjLogger(const ObjLogger& other) : m_id(counter++)
+{
+    std::cout << *this << ": creation by const copy of " << other << std::endl;
+}
+
+ObjLogger::ObjLogger(ObjLogger&& other) : m_id(counter++)
+{
+    std::cout << *this << ": creation by move of " << other << std::endl;
+}
+
+ObjLogger& ObjLogger::operator= (const ObjLogger& other)
+{
+    std::cout << *this << ": assignement of " << other << std::endl;
+    return *this;
+}
+
+ObjLogger& ObjLogger::operator= (ObjLogger&& other)
+{
+    std::cout << *this << ": move assignement of " << other << std::endl;
+    return *this;
+}
+
+ObjLogger::~ObjLogger()
+{
+    std::cout << *this << ": destruction" << std::endl;
+}
+
+
+std::ostream& operator<<(std::ostream& os, const ObjLogger& obj)
+{
+    os << "Obj_" << obj.m_id;
     return os;
 }
 
@@ -59,7 +83,7 @@ class WorkerTest
 {
 public:
     WorkerTest() = delete;
-    WorkerTest(int i, const std::string& message, const ArgumentLogger& ag) : worker_id(i), nb_call(0)
+    WorkerTest(int i, const std::string& message, const ObjLogger& ag) : worker_id(i), nb_call(0)
     {
         std::cout << "Constructing worker " << i << " (message=" << message << ", arg=" << ag<< ")"<< std::endl;
     }

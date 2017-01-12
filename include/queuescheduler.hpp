@@ -22,6 +22,8 @@ template <typename Input, typename Output, class Worker>  // TODO: Could the num
 class QueueScheduler
 {
 
+//using Output = decltype( Worker() )
+
 using InputPtr = std::unique_ptr<Input>;
 using OutputPtr = std::unique_ptr<Output>;
 using WorkerPtr = std::unique_ptr<Worker>;
@@ -157,7 +159,7 @@ void QueueScheduler<Input, Output, Worker>::scheduler_job(const Feeder& feeder)
         // while keeping track of the  order)
         _outputQueue.push_back(std::move(returnedValue));
     }
-
+    push_release(); // Finally release output queue
 }
 
 
@@ -166,15 +168,19 @@ void QueueScheduler<Input, Output, Worker>::feeder_job(const Feeder& feeder)
 {
     try
     {
-        while(true)
+        while(InputPtr nextInput = feeder())
         {
-            _inputQueue.push_back(feeder());
+            if (!nextInput)
+            {
+                throw ExpiredException{};
+            }
+            _inputQueue.push_back(std::move(nextInput));
         }
     }
     catch (const ExpiredException& e)
     {
-        // Release the queue
-        push_release();
+        // Release input queue
+        _inputQueue.push_back(nullptr); // unique_ptr automatically deduced
     }
 }
 

@@ -12,6 +12,7 @@ include_directories(include/)
 # #### Library definition ####
 #
 # set(LIB_SOURCES
+#     include/workerbase.hpp
 #     include/workerfactory.hpp
 #     include/queuethread.hpp
 #     include/queuescheduler.hpp

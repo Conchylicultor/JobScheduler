@@ -5,6 +5,8 @@
 #include <iostream>
 #include <sstream>
 
+#include "workerbase.hpp"
+
 
 class ObjLogger;
 std::ostream& operator<<(std::ostream& os, const ObjLogger& obj);
@@ -79,15 +81,15 @@ std::ostream& operator<<(std::ostream& os, const ObjLogger& obj)
 /** Sample worker class
   * Has to overload the operator ()
   */
-class WorkerTest
+class WorkerTest : public job_scheduler::WorkerBase<int, std::string>
 {
 public:
     WorkerTest() = delete;
-    WorkerTest(int i, const std::string& message, const ObjLogger& ag) : worker_id(i), nb_call(0)
+    WorkerTest(int i, const std::string& message, const ObjLogger& ag) : WorkerBase(i), nb_call(0)
     {
         std::cout << "Constructing worker " << i << " (message=" << message << ", arg=" << ag<< ")"<< std::endl;
     }
-    WorkerTest(int i, const std::string& message = "") : worker_id(i), nb_call(0)
+    WorkerTest(int i, const std::string& message = "") : WorkerBase(i), nb_call(0)
     {
         std::cout << "Constructing worker " << i ;
         if (!message.empty())
@@ -97,17 +99,16 @@ public:
         std::cout << std::endl;
     }
 
-    std::unique_ptr<std::string> operator()(int input)  // Process the data
+    std::unique_ptr<std::string> operator()(const int& input) override  // Process the data
     {
         ++nb_call;
         return std::unique_ptr<std::string>(
             new std::string(
-                "Worker " + std::to_string(worker_id) + ": input=" + std::to_string(input) + " (" + std::to_string(nb_call)+ " call)"
+                "Worker " + std::to_string(m_worker_id) + ": input=" + std::to_string(input) + " (" + std::to_string(nb_call)+ " call)"
             )
         );
     }
 private:
-    int worker_id;
     int nb_call;
 
     friend std::ostream& operator<<(std::ostream& os, const WorkerTest& obj);
@@ -115,7 +116,7 @@ private:
 
 std::ostream& operator<<(std::ostream& os, const WorkerTest& obj)
 {
-    os << "Worker " << obj.worker_id;
+    os << "Worker " << obj.m_worker_id;
     return os;
 }
 

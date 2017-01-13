@@ -213,7 +213,7 @@ void testSequencialQueue()
     const int nb_workers = 3;
 
     // Create the job queue
-    job_scheduler::QueueScheduler<int, std::string, WorkerTest> queue{};
+    job_scheduler::QueueScheduler<WorkerTest> queue{};
 
     // Will construct workers on the fly, using the shared params (Each worker also have a unique id)
     queue.add_workers(
@@ -244,7 +244,7 @@ void testSequencialQueueReuse()
 
     const int nb_workers = 3;
 
-    job_scheduler::QueueScheduler<int, std::string, WorkerTest> queue{1,1};  // Only one element at a time in input/output queue
+    job_scheduler::QueueScheduler<WorkerTest> queue{1,1};  // Only one element at a time in input/output queue
 
     queue.add_workers({}, nb_workers);
 
@@ -274,7 +274,7 @@ void testWorkerAccess()
 
     const int nb_workers = 5;
 
-    job_scheduler::QueueScheduler<int, std::string, WorkerTest> queue{};
+    job_scheduler::QueueScheduler<WorkerTest> queue{};
     queue.add_workers({"Shared message"}, nb_workers);
 
     for(auto& worker : queue.get_workers())  // Can be const& or &

@@ -18,10 +18,11 @@ To use the library, just include the headers (present in the `include/` folder).
 ```cpp
 const int nb_workers = 2;
 
-// Create the job queue (of the form <Input, Output, Worker>)
-job_scheduler::QueueScheduler<cv::Mat, int, PersonCounter> queue{};
+// Create the job queue (of the form <Worker>)
+// The Worker class  has to override std::unique_ptr<Output> operator() (const Input&)
+job_scheduler::QueueScheduler<PersonCounter> queue{};
 
-// Initialize the workers
+// Initialize (construct) the workers
 queue.add_workers(
     {},  // Factory to wrap the worker construction (constructed using PersonCounter{workerId, Args...})
     nb_workers // Here nb_workers == nb_gpu

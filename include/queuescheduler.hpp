@@ -5,7 +5,9 @@
 #include <memory>
 #include <mutex>
 #include <future>
+#include <type_traits>
 
+#include "workerbase.hpp"
 #include "workerfactory.hpp"
 #include "queuethread.hpp"
 
@@ -18,11 +20,13 @@ namespace job_scheduler
   * output sequencial with respect to the input.
   * The pop call will be blocking while the release token hasn't been pushed.
   */
-template <typename Input, typename Output, class Worker>  // TODO: Could the number of templates args could be reduced (redundancy) ?
+template <class Worker>
+// typename std::enable_if<std::is_base_of<WorkerBase<,>, Worker>::value, void>::type // TODO: How to constraint the class ?
 class QueueScheduler
 {
 
-//using Output = decltype( Worker() )
+using Input = typename Worker::input_type;
+using Output = typename Worker::output_type;
 
 using InputPtr = std::unique_ptr<Input>;
 using OutputPtr = std::unique_ptr<Output>;
@@ -102,16 +106,16 @@ class ExpiredException : public std::exception
 };
 
 
-template <typename Input, typename Output, class Worker>
-QueueScheduler<Input, Output, Worker>::QueueScheduler(size_t maxInputSize, size_t maxOutputSize) :
+template <class Worker>
+QueueScheduler<Worker>::QueueScheduler(size_t maxInputSize, size_t maxOutputSize) :
     _inputQueue(maxInputSize),
     _outputQueue(maxOutputSize)
 {
 }
 
 
-template <typename Input, typename Output, class Worker>
-void QueueScheduler<Input, Output, Worker>::add_workers(
+template <class Worker>
+void QueueScheduler<Worker>::add_workers(
     const WorkerFactory<Worker>& factory,
     int nbWorker
 )
@@ -123,8 +127,8 @@ void QueueScheduler<Input, Output, Worker>::add_workers(
 }
 
 
-template <typename Input, typename Output, class Worker>
-void QueueScheduler<Input, Output, Worker>::launch(const Feeder& feeder)
+template <class Worker>
+void QueueScheduler<Worker>::launch(const Feeder& feeder)
 {
     // Will launch the scheduler
     _schedulerFutur = std::async(  // To avoid blocking call, need to capture the future in a member variable (future has blocking destructor)
@@ -135,8 +139,8 @@ void QueueScheduler<Input, Output, Worker>::launch(const Feeder& feeder)
 }
 
 
-template <typename Input, typename Output, class Worker>
-void QueueScheduler<Input, Output, Worker>::scheduler_job(const Feeder& feeder)
+template <class Worker>
+void QueueScheduler<Worker>::scheduler_job(const Feeder& feeder)
 {
     // Launch the feeder on another thread
     std::future<void> feederFutur = std::async(  // Capture the future to avoid blocking call
@@ -168,8 +172,8 @@ void QueueScheduler<Input, Output, Worker>::scheduler_job(const Feeder& feeder)
 }
 
 
-template <typename Input, typename Output, class Worker>
-void QueueScheduler<Input, Output, Worker>::feeder_job(const Feeder& feeder)
+template <class Worker>
+void QueueScheduler<Worker>::feeder_job(const Feeder& feeder)
 {
     try
     {
@@ -190,8 +194,8 @@ void QueueScheduler<Input, Output, Worker>::feeder_job(const Feeder& feeder)
 }
 
 
-template <typename Input, typename Output, class Worker>
-auto QueueScheduler<Input, Output, Worker>::worker_job(WorkerPtr worker, InputPtr input) -> OutputPtr
+template <class Worker>
+auto QueueScheduler<Worker>::worker_job(WorkerPtr worker, InputPtr input) -> OutputPtr
 {
     // Launch the task
     OutputPtr output = (*worker)(*input.get());
@@ -204,8 +208,8 @@ auto QueueScheduler<Input, Output, Worker>::worker_job(WorkerPtr worker, InputPt
 }
 
 
-template <typename Input, typename Output, class Worker>
-void QueueScheduler<Input, Output, Worker>::push_release()
+template <class Worker>
+void QueueScheduler<Worker>::push_release()
 {
     // TODO: Make sure this function is called only once ? <= In that case,
     // be sure to reinitialize when calling launch again
@@ -217,16 +221,16 @@ void QueueScheduler<Input, Output, Worker>::push_release()
 }
 
 
-template <typename Input, typename Output, class Worker>
-auto QueueScheduler<Input, Output, Worker>::pop() -> OutputPtr
+template <class Worker>
+auto QueueScheduler<Worker>::pop() -> OutputPtr
 {
     std::future<OutputPtr> output = _outputQueue.pop_front();
     return output.get();  // Will wait for the worker to finish
 }
 
 
-template <typename Input, typename Output, class Worker>
-auto QueueScheduler<Input, Output, Worker>::get_workers() -> const std::list<WorkerPtr>&
+template <class Worker>
+auto QueueScheduler<Worker>::get_workers() -> const std::list<WorkerPtr>&
 {
     return _availableWorkers.get_data();
 }
